@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinity Gamers | Admin Management Portal</title>
+  <meta name="description" content="Dedicated administrative console for Infinity Gamers — Station lock tracker, customer in/out logs, top players leaderboard, and news publisher.">
+  <link rel="icon" type="image/png" href="assets/logo.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- TOP ADMIN NAVBAR -->
+  <header class="admin-navbar">
+    <div class="admin-logo-block">
+      <img src="assets/logo.png" alt="Infinity Gamers Logo" class="admin-logo-img">
+      <div class="admin-logo-titles">
+        <span class="admin-logo-main">INFINITY GAMERS</span>
+        <span class="admin-logo-sub">ADMIN MANAGEMENT SYSTEM</span>
+      </div>
+    </div>
+
+    <div class="admin-nav-actions">
+      <!-- API ENDPOINT STATUS PILL -->
+      <button type="button" class="api-status-pill" id="btnApiSettings" onclick="openApiModal()" title="Click to configure backend API endpoint">
+        <span class="status-dot connecting" id="apiStatusDot"></span>
+        <span id="apiStatusText">CONNECTING...</span>
+      </button>
+
+      <!-- LOGOUT BUTTON (Only visible when logged in) -->
+      <button type="button" class="btn-secondary" id="btnTopLogout" onclick="handleAdminLogout()" style="display:none; min-height:36px; padding:0 14px; font-size:11px;">
+        LOGOUT
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="admin-container">
+
+    <!-- 1. AUTHENTICATION SECTION (IF NOT LOGGED IN) -->
+    <div id="adminAuthSection" class="admin-auth-card">
+      <span class="admin-auth-tag">SECURITY CLEARANCE</span>
+      <h2>ADMIN LOGIN</h2>
+      <p>Sign in with your administrative credentials to manage stations, customer logs, and announcements.</p>
+
+      <form id="adminLoginForm" onsubmit="handleAdminLogin(event)">
+        <div class="form-group">
+          <label for="adminUsername">USERNAME</label>
+          <input type="text" id="adminUsername" class="form-control" placeholder="Enter username" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label for="adminPassword">PASSWORD</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="adminPassword" class="form-control" placeholder="Enter password" required style="padding-right:44px;">
+            <button type="button" id="togglePasswordBtn" class="password-toggle-btn" onclick="togglePasswordVisibility()" aria-label="Toggle password visibility">
+              <!-- Eye open SVG -->
+              <svg id="eyeIconOpen" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <!-- Eye closed SVG -->
+              <svg id="eyeIconClosed" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="btnSubmitLogin" style="width:100%; min-height:44px; margin-top:8px;">
+          SIGN IN TO CONSOLE
+        </button>
+
+        <div class="admin-login-error" id="adminLoginError"></div>
+      </form>
+    </div>
+
+    <!-- 2. DASHBOARD VIEW (WHEN LOGGED IN) -->
+    <div id="adminDashboardSection" style="display:none;">
+
+      <!-- HEADER BAR -->
+      <div class="admin-header-bar">
+        <div class="admin-brand-col">
+          <h1>
+            LIVE CONSOLE
+            <span class="admin-console-tag" id="activeSessionsCount">0 SESSIONS ACTIVE</span>
+          </h1>
+          <div class="admin-meta-line" id="adminClockText">
+            SYSTEM READY
+          </div>
+        </div>
+
+        <div class="admin-actions-bar" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button type="button" class="btn-primary" onclick="openStartSessionModal('PS5 Station 1')" style="min-height:38px; padding:0 16px;">
+            + START SESSION
+          </button>
+          <button type="button" class="btn-secondary" onclick="refreshAdminData()" style="min-height:38px; padding:0 14px;">
+            REFRESH
+          </button>
+        </div>
+      </div>
+
+      <!-- LIVE STATIONS OVERVIEW (STATION 1 & STATION 2) -->
+      <div class="station-live-grid">
+        <!-- STATION 1 -->
+        <div class="station-live-card" id="cardStation1">
+          <div class="station-card-top">
+            <span class="station-title">PS5 STATION 1</span>
+            <span class="station-badge vacant" id="badgeStation1">VACANT</span>
+          </div>
+          <div class="station-player-info" id="playerInfoStation1">
+            <strong>No Active Player</strong>
+            <span>Station ready for walk-ins</span>
+          </div>
+          <div class="station-metrics-row">
+            <div>
+              <span>IN TIME</span>
+              <strong id="inTimeStation1">--:--</strong>
+            </div>
+            <div>
+              <span>ELAPSED</span>
+              <strong id="elapsedStation1">0 MIN</strong>
+            </div>
+            <div>
+              <span>GAME</span>
+              <strong id="gameStation1">--</strong>
+            </div>
+          </div>
+          <div id="actionBtnStation1">
+            <button type="button" class="btn-primary" onclick="openStartSessionModal('PS5 Station 1')" style="width:100%; min-height:36px; font-size:11px;">
+              START SESSION
+            </button>
+          </div>
+        </div>
+
+        <!-- STATION 2 -->
+        <div class="station-live-card" id="cardStation2">
+          <div class="station-card-top">
+            <span class="station-title">PS5 STATION 2</span>
+            <span class="station-badge vacant" id="badgeStation2">VACANT</span>
+          </div>
+          <div class="station-player-info" id="playerInfoStation2">
+            <strong>No Active Player</strong>
+            <span>Station ready for walk-ins</span>
+          </div>
+          <div class="station-metrics-row">
+            <div>
+              <span>IN TIME</span>
+              <strong id="inTimeStation2">--:--</strong>
+            </div>
+            <div>
+              <span>ELAPSED</span>
+              <strong id="elapsedStation2">0 MIN</strong>
+            </div>
+            <div>
+              <span>GAME</span>
+              <strong id="gameStation2">--</strong>
+            </div>
+          </div>
+          <div id="actionBtnStation2">
+            <button type="button" class="btn-primary" onclick="openStartSessionModal('PS5 Station 2')" style="width:100%; min-height:36px; font-size:11px;">
+              START SESSION
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABS NAVIGATION -->
+      <div class="admin-tabs-nav">
+        <button type="button" class="admin-tab-btn active" data-tab="tabSessions" onclick="switchAdminTab('tabSessions', this)">
+          CUSTOMER SESSIONS LOG
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="tabLeaderboard" onclick="switchAdminTab('tabLeaderboard', this)">
+          TOP PLAYERS LEADERBOARD
+        </button>
+        <button type="button" class="admin-tab-btn" data-tab="tabNews" onclick="switchAdminTab('tabNews', this)">
+          PUBLISH NEWS &amp; TOURNAMENTS
+        </button>
+      </div>
+
+      <!-- TAB 1: SESSIONS LOG -->
+      <div id="tabSessions" class="admin-tab-content">
+        <div class="table-controls-bar">
+          <div class="search-input-box">
+            <svg class="search-icon-pos" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="sessionSearchInput" class="form-control" placeholder="Search by customer, phone, or game..." oninput="handleSessionSearch()">
+          </div>
+
+          <div class="filter-pills-row">
+            <button type="button" class="table-filter-btn active" data-filter="all" onclick="filterSessions('all', this)">ALL</button>
+            <button type="button" class="table-filter-btn" data-filter="active" onclick="filterSessions('active', this)">ACTIVE</button>
+            <button type="button" class="table-filter-btn" data-filter="completed" onclick="filterSessions('completed', this)">COMPLETED</button>
+            <button type="button" class="table-filter-btn" data-filter="repeat" onclick="filterSessions('repeat', this)">REPEAT CUSTOMERS</button>
+          </div>
+        </div>
+
+        <div class="table-responsive-box">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>STATUS</th>
+                <th>STATION</th>
+                <th>CUSTOMER NAME</th>
+                <th>PHONE</th>
+                <th>GAME</th>
+                <th>IN TIME</th>
+                <th>OUT TIME</th>
+                <th>DURATION</th>
+                <th>AMOUNT</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="sessionsTableBody">
+              <tr>
+                <td colspan="10" style="text-align:center; padding:32px; color:var(--text-muted);">Loading customer sessions...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 2: TOP PLAYERS LEADERBOARD -->
+      <div id="tabLeaderboard" class="admin-tab-content" style="display:none;">
+        <div class="table-responsive-box">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>RANK</th>
+                <th>CUSTOMER NAME</th>
+                <th>PHONE</th>
+                <th>TOTAL TIME</th>
+                <th>SESSIONS</th>
+                <th>FAVORITE GAME</th>
+                <th>TIER BADGE</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTableBody">
+              <tr>
+                <td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">Loading leaderboard...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: PUBLISH NEWS & TOURNAMENTS -->
+      <div id="tabNews" class="admin-tab-content" style="display:none;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px;">
+          <!-- POST FORM -->
+          <div style="background:var(--bg-card); border:1px solid var(--border-pink); border-radius:var(--radius); padding:24px;">
+            <h3 style="font-family:var(--font-heading); font-size:16px; color:#fff; margin-bottom:16px;">NEW TOURNAMENT OR ANNOUNCEMENT</h3>
+            <form id="newsPublishForm" onsubmit="handleNewsPublish(event)">
+              <div class="form-group">
+                <label for="newsTitle">HEADLINE / TITLE</label>
+                <input type="text" id="newsTitle" class="form-control" placeholder="e.g. EA FC 26 Championship Knockout" required>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div class="form-group">
+                  <label for="newsCategory">CATEGORY</label>
+                  <select id="newsCategory" class="form-control">
+                    <option value="TOURNAMENT">TOURNAMENT</option>
+                    <option value="EVENT">EVENT</option>
+                    <option value="NEW GAME">NEW GAME</option>
+                    <option value="ANNOUNCEMENT">ANNOUNCEMENT</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="newsPrize">PRIZE POOL</label>
+                  <input type="text" id="newsPrize" class="form-control" placeholder="e.g. Rs. 5,000 Cash Pool">
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div class="form-group">
+                  <label for="newsEntryFee">ENTRY PASS</label>
+                  <input type="text" id="newsEntryFee" class="form-control" placeholder="e.g. Rs. 200 / Player">
+                </div>
+                <div class="form-group">
+                  <label for="newsTime">DATE &amp; TIME</label>
+                  <input type="text" id="newsTime" class="form-control" placeholder="e.g. Coming This Sunday • 2 PM">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="newsSummary">DETAILS &amp; RULES</label>
+                <textarea id="newsSummary" class="form-control" placeholder="Format, console settings, dual-elimination brackets, and prizes..." required></textarea>
+              </div>
+
+              <button type="submit" class="btn-primary" style="width:100%; min-height:42px;">
+                PUBLISH TO PUBLIC NEWS FEED
+              </button>
+            </form>
+          </div>
+
+          <!-- PUBLISHED NEWS LIST -->
+          <div>
+            <h3 style="font-family:var(--font-heading); font-size:16px; color:#fff; margin-bottom:16px;">ACTIVE PUBLIC ANNOUNCEMENTS</h3>
+            <div id="publishedNewsList" style="display:flex; flex-direction:column; gap:14px;">
+              <div style="padding:24px; text-align:center; color:var(--text-muted); background:var(--bg-card); border:1px solid var(--border-line); border-radius:var(--radius);">
+                Loading announcements...
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ========================================================
+       MODAL: START NEW SESSION
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalStartSession">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modalStartSessionTitle">START NEW SESSION</h3>
+        <button type="button" class="modal-close-btn" onclick="closeStartSessionModal()">&times;</button>
+      </div>
+
+      <form id="startSessionForm" onsubmit="handleStartSessionSubmit(event)">
+        <div class="modal-body">
+          <!-- STATION LOCKED BANNER (If station is occupied) -->
+          <div id="stationLockedWarning" style="display:none; background:rgba(239, 68, 68, 0.12); border:1px solid rgba(239, 68, 68, 0.4); border-radius:var(--radius); padding:12px 14px; margin-bottom:14px; font-family:var(--font-mono); font-size:11.5px; color:#fca5a5; line-height:1.5;">
+            <strong>STATION CURRENTLY OCCUPIED:</strong> An active session is currently running on this console. Please end the active session before starting a new one.
+          </div>
+
+          <!-- REPEAT CUSTOMER RECOGNITION BANNER -->
+          <div id="repeatCustomerNotice" style="display:none; background:rgba(0, 212, 255, 0.08); border:1px solid rgba(0, 212, 255, 0.35); border-radius:var(--radius); padding:12px 14px; margin-bottom:14px; font-family:var(--font-mono); font-size:11.5px; color:#6be5ff;">
+            <div style="font-weight:700; display:flex; align-items:center; gap:6px;">
+              <span class="status-dot"></span>
+              REPEAT CUSTOMER DETECTED
+            </div>
+            <div id="repeatCustomerDetails" style="margin-top:4px; color:#cbd5e1; font-size:12px;"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="newSessionStation">SELECT STATION</label>
+            <select id="newSessionStation" class="form-control" onchange="handleStationSelectChange()">
+              <option value="PS5 Station 1">PS5 Station 1 (Dedicated 4K 120Hz)</option>
+              <option value="PS5 Station 2">PS5 Station 2 (Dedicated 4K 120Hz)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="newCustomerPhone">PHONE NUMBER (10 DIGITS)</label>
+            <input type="tel" id="newCustomerPhone" class="form-control" placeholder="e.g. 9876543210" oninput="checkRepeatCustomer()">
+          </div>
+
+          <div class="form-group">
+            <label for="newCustomerName">CUSTOMER / TEAM NAME</label>
+            <input type="text" id="newCustomerName" class="form-control" placeholder="e.g. Rahul &amp; Friends" required oninput="checkRepeatCustomer()">
+          </div>
+
+          <div class="form-group">
+            <label for="newSessionGame">GAME SELECTED</label>
+            <select id="newSessionGame" class="form-control">
+              <option value="EA Sports FC 26">EA Sports FC 26</option>
+              <option value="WWE 2K26">WWE 2K26</option>
+              <option value="Mortal Kombat 1">Mortal Kombat 1</option>
+              <option value="God of War">God of War</option>
+              <option value="GTA V">GTA V</option>
+              <option value="Spider-Man 2">Spider-Man 2</option>
+              <option value="Red Dead Redemption 2">Red Dead Redemption 2</option>
+              <option value="It Takes Two">It Takes Two</option>
+              <option value="A Way Out">A Way Out</option>
+              <option value="Overcooked! All You Can Eat">Overcooked! All You Can Eat</option>
+              <option value="007 First Light">007 First Light</option>
+            </select>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="newHourlyRate">RATE BASIS (RS.)</label>
+              <input type="number" id="newHourlyRate" class="form-control" value="150" min="50" step="10">
+            </div>
+            <div class="form-group">
+              <label for="newSessionNotes">NOTES / PASS TYPE</label>
+              <input type="text" id="newSessionNotes" class="form-control" placeholder="e.g. 2 Controllers, AC pass">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeStartSessionModal()">CANCEL</button>
+          <button type="submit" class="btn-primary" id="btnSubmitStartSession">START &amp; LOCK STATION</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: CHECKOUT / END SESSION
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalCheckout">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>END SESSION &amp; CHECKOUT</h3>
+        <button type="button" class="modal-close-btn" onclick="closeCheckoutModal()">&times;</button>
+      </div>
+
+      <form id="checkoutForm" onsubmit="handleCheckoutSubmit(event)">
+        <input type="hidden" id="checkoutSessionId">
+        <div class="modal-body">
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-line); border-radius:var(--radius); padding:16px; margin-bottom:16px;">
+            <div style="font-family:var(--font-mono); font-size:11px; color:var(--neon-blue); letter-spacing:1px; text-transform:uppercase;">STATION DETAILS</div>
+            <strong style="display:block; font-size:18px; color:#fff; margin-top:4px;" id="checkoutCustomerName">--</strong>
+            <span style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);" id="checkoutStation">--</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; background:rgba(0,0,0,0.25); padding:12px; border-radius:var(--radius); margin-bottom:16px; text-align:center;">
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">IN TIME</span>
+              <strong style="display:block; font-size:14px; color:#fff; margin-top:2px;" id="checkoutInTime">--</strong>
+            </div>
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">OUT TIME</span>
+              <strong style="display:block; font-size:14px; color:#fff; margin-top:2px;" id="checkoutOutTime">NOW</strong>
+            </div>
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">ELAPSED</span>
+              <strong style="display:block; font-size:14px; color:var(--neon-blue);" id="checkoutDuration">0 MIN</strong>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="checkoutFinalAmount">TOTAL BILLING AMOUNT (RS.)</label>
+            <input type="number" id="checkoutFinalAmount" class="form-control" required min="0" step="10">
+          </div>
+
+          <div class="form-group">
+            <label for="checkoutNotes">FINAL NOTES</label>
+            <input type="text" id="checkoutNotes" class="form-control" placeholder="e.g. Paid UPI, DualSense returned">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeCheckoutModal()">CANCEL</button>
+          <button type="submit" class="btn-primary" style="background:#10b981; color:#000; border-color:#10b981;">COMPLETE CHECKOUT</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: API CONNECTION SETTINGS
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalApiSettings">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>BACKEND API CONNECTION</h3>
+        <button type="button" class="modal-close-btn" onclick="closeApiModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="color:var(--text-dim); font-size:13px; margin-bottom:16px;">
+          Configure the public Infinity Gamers backend server endpoint where session records and news announcements are synchronized.
+        </p>
+
+        <div class="form-group">
+          <label for="apiUrlInput">API BASE URL</label>
+          <input type="url" id="apiUrlInput" class="form-control" placeholder="https://infinity-gamers-.onrender.com" required>
+          <small style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:6px;">
+            Default production: <code>https://infinity-gamers-.onrender.com</code><br>
+            Local testing: <code>http://localhost:3000</code>
+          </small>
+        </div>
+
+        <div id="apiTestResult" style="display:none; padding:10px 14px; border-radius:var(--radius); font-family:var(--font-mono); font-size:12px; margin-bottom:14px;"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="testApiConnection()">TEST CONNECTION</button>
+        <button type="button" class="btn-primary" onclick="saveApiSettings()">SAVE &amp; RECONNECT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast-msg" id="toastMsg"></div>
+
+  <!-- ADMIN CLIENT SCRIPT -->
+  <script src="admin.js"></script>
+</body>
+</html>
