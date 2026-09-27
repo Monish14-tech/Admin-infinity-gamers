@@ -11,15 +11,14 @@ function getInitialApiUrl() {
   let saved = localStorage.getItem("infinity_admin_api_url");
   if (saved && saved.trim()) {
     saved = saved.trim().replace(/\/+$/, "");
-    // Auto-correct any legacy URL with trailing hyphen
-    if (saved === "https://infinity-gamers-.onrender.com") {
+    // Auto-correct any legacy URL with trailing hyphen or invalid protocol
+    if (saved.includes("infinity-gamers-") || !saved.startsWith("http")) {
       saved = DEFAULT_PROD_API;
       localStorage.setItem("infinity_admin_api_url", saved);
     }
     return saved;
   }
-  const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-  return isLocal ? DEFAULT_LOCAL_API : DEFAULT_PROD_API;
+  return DEFAULT_PROD_API;
 }
 
 let API_BASE_URL = getInitialApiUrl();
@@ -145,11 +144,29 @@ window.handleAdminLogin = async function(e) {
   const password = passwordInput ? passwordInput.value.trim() : "";
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/admin/login?_t=${Date.now()}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
-    });
+    let res;
+    try {
+      res = await fetch(`${API_BASE_URL}/api/admin/login?_t=${Date.now()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+    } catch (networkErr) {
+      // If current API threw a network error (e.g. Failed to fetch), retry against production cloud API
+      if (API_BASE_URL !== DEFAULT_PROD_API) {
+        API_BASE_URL = DEFAULT_PROD_API;
+        localStorage.setItem("infinity_admin_api_url", API_BASE_URL);
+        initApiConnectionStatus();
+        res = await fetch(`${API_BASE_URL}/api/admin/login?_t=${Date.now()}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+      } else {
+        throw networkErr;
+      }
+    }
+
     const data = await res.json();
 
     if (res.ok && data.success && data.token) {

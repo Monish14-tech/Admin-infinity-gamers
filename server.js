@@ -40,10 +40,11 @@ const server = createServer((request, response) => {
   }
 
   const ext = path.extname(filePath).toLowerCase();
-  const isHtml = ext === ".html";
   response.writeHead(200, {
     "Content-Type": contentTypes[ext] || "application/octet-stream",
-    "Cache-Control": isHtml ? "no-store, no-cache, must-revalidate, max-age=0" : "max-age=3600"
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0"
   });
   response.end(readFileSync(filePath));
 });
