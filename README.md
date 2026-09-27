@@ -12,7 +12,7 @@ Dedicated, private administrative portal for **Infinity Gamers (PS5 Gaming Loung
 - **One-Click Checkout & Billing**: Automatically calculates play duration and billing amount upon checkout.
 - **Dynamic Leaderboard Management**: Automatic tier allocation (Diamond Squad, Platinum, Gold, Rookie).
 - **Public News & Tournament Publisher**: Publish tournaments and knockout announcements that automatically display on the public site in real time.
-- **Configurable API Endpoint**: Seamlessly connects to the public production backend on Render (`https://infinity-gamers-.onrender.com`) or local server (`http://localhost:3000`).
+- **Configurable API Endpoint**: Seamlessly connects to the public production backend on Render (`https://infinity-gamers.onrender.com`) or local server (`http://localhost:3000`).
 
 ---
 

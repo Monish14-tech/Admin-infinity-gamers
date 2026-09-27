@@ -4,12 +4,20 @@
  */
 
 // 1. BACKEND API CONFIGURATION
-const DEFAULT_PROD_API = "https://infinity-gamers-.onrender.com";
+const DEFAULT_PROD_API = "https://infinity-gamers.onrender.com";
 const DEFAULT_LOCAL_API = "http://localhost:3000";
 
 function getInitialApiUrl() {
-  const saved = localStorage.getItem("infinity_admin_api_url");
-  if (saved && saved.trim()) return saved.trim().replace(/\/+$/, "");
+  let saved = localStorage.getItem("infinity_admin_api_url");
+  if (saved && saved.trim()) {
+    saved = saved.trim().replace(/\/+$/, "");
+    // Auto-correct any legacy URL with trailing hyphen
+    if (saved === "https://infinity-gamers-.onrender.com") {
+      saved = DEFAULT_PROD_API;
+      localStorage.setItem("infinity_admin_api_url", saved);
+    }
+    return saved;
+  }
   const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
   return isLocal ? DEFAULT_LOCAL_API : DEFAULT_PROD_API;
 }
@@ -47,7 +55,7 @@ function initClock() {
   setInterval(update, 1000);
 }
 
-// API STATUS CHECK
+// API STATUS CHECK (WITH AUTO-FALLBACK & AUTO-RECOVERY)
 async function initApiConnectionStatus() {
   const dot = document.getElementById("apiStatusDot");
   const text = document.getElementById("apiStatusText");
@@ -57,12 +65,45 @@ async function initApiConnectionStatus() {
     if (res.ok) {
       if (dot) dot.className = "status-dot";
       if (text) text.textContent = "CONNECTED TO API";
-    } else {
-      throw new Error("HTTP " + res.status);
+      return true;
     }
+    throw new Error("HTTP " + res.status);
   } catch (err) {
+    // If the active URL fails, test production cloud API first
+    if (API_BASE_URL !== DEFAULT_PROD_API) {
+      try {
+        const prodRes = await fetch(`${DEFAULT_PROD_API}/api/health?_t=${Date.now()}`);
+        if (prodRes.ok) {
+          API_BASE_URL = DEFAULT_PROD_API;
+          localStorage.setItem("infinity_admin_api_url", API_BASE_URL);
+          const apiInput = document.getElementById("apiUrlInput");
+          if (apiInput) apiInput.value = API_BASE_URL;
+          if (dot) dot.className = "status-dot";
+          if (text) text.textContent = "CONNECTED TO API";
+          return true;
+        }
+      } catch {}
+    }
+
+    // Next test local server
+    if (API_BASE_URL !== DEFAULT_LOCAL_API) {
+      try {
+        const localRes = await fetch(`${DEFAULT_LOCAL_API}/api/health?_t=${Date.now()}`);
+        if (localRes.ok) {
+          API_BASE_URL = DEFAULT_LOCAL_API;
+          localStorage.setItem("infinity_admin_api_url", API_BASE_URL);
+          const apiInput = document.getElementById("apiUrlInput");
+          if (apiInput) apiInput.value = API_BASE_URL;
+          if (dot) dot.className = "status-dot";
+          if (text) text.textContent = "CONNECTED TO API";
+          return true;
+        }
+      } catch {}
+    }
+
     if (dot) dot.className = "status-dot offline";
     if (text) text.textContent = "API OFFLINE";
+    return false;
   }
 }
 
