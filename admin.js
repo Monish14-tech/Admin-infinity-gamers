@@ -774,7 +774,7 @@ window.handleStartSessionSubmit = async function(e) {
   e.preventDefault();
   const station = document.getElementById("newSessionStation")?.value || "PS5 Station 1";
   const customerName = document.getElementById("newCustomerName")?.value.trim() || "";
-  const gamerTag = (document.getElementById("newGamerTag")?.value || "").replace(/[^a-zA-Z\s]/g, "").trim();
+  const gamerTag = (document.getElementById("newGamerTag")?.value || "").replace(/[^a-zA-Z0-9\s]/g, "").trim();
   const phone = document.getElementById("newCustomerPhone")?.value.trim() || "";
   const game = document.getElementById("newSessionGame")?.value || "EA Sports FC 26";
   const amount = Number(document.getElementById("newHourlyRate")?.value) || 150;
@@ -897,7 +897,7 @@ window.handleEditSessionSubmit = async function(e) {
   const id = document.getElementById("editSessionId").value;
   const customerName = document.getElementById("editCustomerName").value.trim();
   const phone = document.getElementById("editCustomerPhone").value.trim();
-  const gamerTag = document.getElementById("editGamerTag").value.replace(/[^a-zA-Z\s]/g, "").trim();
+  const gamerTag = document.getElementById("editGamerTag").value.replace(/[^a-zA-Z0-9\s]/g, "").trim();
   const amount = Number(document.getElementById("editHourlyRate").value) || 0;
   const game = document.getElementById("editSessionGame").value;
   const notes = document.getElementById("editSessionNotes").value.trim();
@@ -1225,7 +1225,7 @@ window.handleEditBillSubmit = async function(e) {
   e.preventDefault();
   const id = document.getElementById("editBillSessionId").value;
   const customerName = document.getElementById("editBillCustomerName").value.trim();
-  const gamerTag = document.getElementById("editBillGamerTag").value.replace(/[^a-zA-Z\s]/g, "").trim();
+  const gamerTag = document.getElementById("editBillGamerTag").value.replace(/[^a-zA-Z0-9\s]/g, "").trim();
   const phone = document.getElementById("editBillPhone").value.trim();
   const station = document.getElementById("editBillStation").value;
   const gamesRaw = document.getElementById("editBillGames").value.trim();
@@ -1643,7 +1643,7 @@ window.handleSaveHallOfFamePlayer = async function(e) {
   e.preventDefault();
   const id = document.getElementById("hofPlayerId")?.value;
   const rank = Number(document.getElementById("hofRank")?.value) || 1;
-  const gamerTag = (document.getElementById("hofGamerTag")?.value || "").replace(/[^a-zA-Z\s]/g, "").trim();
+  const gamerTag = (document.getElementById("hofGamerTag")?.value || "").replace(/[^a-zA-Z0-9\s]/g, "").trim();
   const customerName = document.getElementById("hofCustomerName")?.value.trim() || "";
   const phone = document.getElementById("hofPhone")?.value.trim() || "";
   const tier = document.getElementById("hofTier")?.value || "GOLD CONTENDER";
@@ -1654,7 +1654,7 @@ window.handleSaveHallOfFamePlayer = async function(e) {
   const notes = document.getElementById("hofNotes")?.value.trim() || "";
 
   if (!gamerTag) {
-    showToast("Please enter a gamer tag (characters only).");
+    showToast("Please enter a gamer tag.");
     return;
   }
 

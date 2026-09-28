@@ -415,10 +415,10 @@
           </div>
 
           <div class="form-group">
-            <label for="newGamerTag">GAMER TAG (CHARACTERS ONLY)</label>
-            <input type="text" id="newGamerTag" class="form-control" placeholder="Enter gamer tag (letters only)" pattern="[A-Za-z\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+            <label for="newGamerTag">GAMER TAG</label>
+            <input type="text" id="newGamerTag" class="form-control" placeholder="Enter gamer tag (letters &amp; numbers)" pattern="[A-Za-z0-9\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '')">
             <small style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:4px;">
-              Accepts only characters &amp; spaces. Displayed in Hall of Fame.
+              Accepts letters, numbers &amp; spaces. Displayed in Hall of Fame.
             </small>
           </div>
 
@@ -486,10 +486,10 @@
           </div>
 
           <div class="form-group">
-            <label for="editGamerTag">GAMER TAG (CHARACTERS ONLY)</label>
-            <input type="text" id="editGamerTag" class="form-control" placeholder="Enter gamer tag (letters only)" pattern="[A-Za-z\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+            <label for="editGamerTag">GAMER TAG</label>
+            <input type="text" id="editGamerTag" class="form-control" placeholder="Enter gamer tag (letters &amp; numbers)" pattern="[A-Za-z0-9\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '')">
             <small style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:4px;">
-              Only letters allowed. Appears in Hall of Fame.
+              Accepts letters, numbers &amp; spaces. Appears in Hall of Fame.
             </small>
           </div>
 
@@ -770,8 +770,8 @@
               <input type="text" id="editBillCustomerName" class="form-control" placeholder="Enter customer name" required>
             </div>
             <div class="form-group">
-              <label for="editBillGamerTag">GAMER TAG (LETTERS ONLY)</label>
-              <input type="text" id="editBillGamerTag" class="form-control" placeholder="Enter gamer tag (letters only)" pattern="[A-Za-z\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+              <label for="editBillGamerTag">GAMER TAG</label>
+              <input type="text" id="editBillGamerTag" class="form-control" placeholder="Enter gamer tag (letters &amp; numbers)" pattern="[A-Za-z0-9\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '')">
             </div>
           </div>
 
@@ -853,8 +853,8 @@
               <input type="number" id="hofRank" class="form-control" min="1" step="1" required placeholder="e.g. 1" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
             </div>
             <div class="form-group">
-              <label for="hofGamerTag">GAMER TAG (CHARACTERS ONLY)</label>
-              <input type="text" id="hofGamerTag" class="form-control" placeholder="Enter gamer tag (letters only)" pattern="[A-Za-z\s]+" required oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+              <label for="hofGamerTag">GAMER TAG</label>
+              <input type="text" id="hofGamerTag" class="form-control" placeholder="Enter gamer tag (letters &amp; numbers)" pattern="[A-Za-z0-9\s]+" required oninput="this.value = this.value.replace(/[^a-zA-Z0-9\s]/g, '')">
             </div>
           </div>
 
