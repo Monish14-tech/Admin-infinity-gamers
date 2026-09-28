@@ -187,7 +187,7 @@
               <circle cx="11" cy="11" r="8"></circle>
               <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            <input type="text" id="sessionSearchInput" class="form-control" placeholder="Search by customer, phone, or game..." oninput="handleSessionSearch()">
+            <input type="text" id="sessionSearchInput" class="form-control" placeholder="Search customer, gamer tag, phone, game..." oninput="handleSessionSearch()">
           </div>
 
           <div class="filter-pills-row">
@@ -195,6 +195,18 @@
             <button type="button" class="table-filter-btn" data-filter="active" onclick="filterSessions('active', this)">ACTIVE</button>
             <button type="button" class="table-filter-btn" data-filter="completed" onclick="filterSessions('completed', this)">COMPLETED</button>
             <button type="button" class="table-filter-btn" data-filter="repeat" onclick="filterSessions('repeat', this)">REPEAT CUSTOMERS</button>
+          </div>
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-left:auto;">
+            <button type="button" class="btn-secondary" onclick="exportSessionsPdf()" style="min-height:36px; padding:0 12px; font-size:11px;">
+              EXPORT PDF / PRINT
+            </button>
+            <button type="button" class="btn-secondary" onclick="exportSessionsCsv()" style="min-height:36px; padding:0 12px; font-size:11px;">
+              EXPORT CSV
+            </button>
+            <button type="button" class="btn-secondary" onclick="exportSessionsJson()" style="min-height:36px; padding:0 12px; font-size:11px;">
+              EXPORT JSON
+            </button>
           </div>
         </div>
 
@@ -205,8 +217,9 @@
                 <th>STATUS</th>
                 <th>STATION</th>
                 <th>CUSTOMER NAME</th>
+                <th>GAMER TAG</th>
                 <th>PHONE</th>
-                <th>GAME</th>
+                <th>GAME(S)</th>
                 <th>IN TIME</th>
                 <th>OUT TIME</th>
                 <th>DURATION</th>
@@ -216,31 +229,53 @@
             </thead>
             <tbody id="sessionsTableBody">
               <tr>
-                <td colspan="10" style="text-align:center; padding:32px; color:var(--text-muted);">Loading customer sessions...</td>
+                <td colspan="11" style="text-align:center; padding:32px; color:var(--text-muted);">Loading customer sessions...</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- TAB 2: TOP PLAYERS LEADERBOARD -->
+      <!-- TAB 2: PLAYERS HALL OF FAME (ADMIN SELECTION) -->
       <div id="tabLeaderboard" class="admin-tab-content" style="display:none;">
+        <div class="table-controls-bar" style="align-items:center;">
+          <div>
+            <h3 style="font-family:var(--font-heading); font-size:15px; color:#fff; letter-spacing:1px;">ADMIN-SELECTED PLAYERS HALL OF FAME</h3>
+            <span style="font-family:var(--font-mono); font-size:11px; color:var(--text-muted);">
+              Only players selected and curated by the admin appear in the official Hall of Fame and public podium.
+            </span>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-left:auto;">
+            <button type="button" class="btn-primary" onclick="openAddHallOfFameModal()" style="min-height:36px; padding:0 14px; font-size:11px;">
+              + ADD TO HALL OF FAME
+            </button>
+            <button type="button" class="btn-secondary" onclick="exportHallOfFamePdf()" style="min-height:36px; padding:0 12px; font-size:11px;">
+              EXPORT PDF / PRINT
+            </button>
+            <button type="button" class="btn-secondary" onclick="exportHallOfFameCsv()" style="min-height:36px; padding:0 12px; font-size:11px;">
+              EXPORT CSV
+            </button>
+          </div>
+        </div>
+
         <div class="table-responsive-box">
           <table class="data-table">
             <thead>
               <tr>
                 <th>RANK</th>
+                <th>GAMER TAG</th>
                 <th>CUSTOMER NAME</th>
                 <th>PHONE</th>
-                <th>TOTAL TIME</th>
+                <th>VERIFIED HOURS</th>
                 <th>SESSIONS</th>
-                <th>FAVORITE GAME</th>
-                <th>TIER BADGE</th>
+                <th>PRIMARY TITLE</th>
+                <th>TIER / BADGE</th>
+                <th>ACTIONS</th>
               </tr>
             </thead>
             <tbody id="leaderboardTableBody">
               <tr>
-                <td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">Loading leaderboard...</td>
+                <td colspan="9" style="text-align:center; padding:32px; color:var(--text-muted);">Loading Hall of Fame...</td>
               </tr>
             </tbody>
           </table>
@@ -326,7 +361,7 @@
         <div class="modal-body">
           <!-- STATION LOCKED BANNER (If station is occupied) -->
           <div id="stationLockedWarning" style="display:none; background:rgba(239, 68, 68, 0.12); border:1px solid rgba(239, 68, 68, 0.4); border-radius:var(--radius); padding:12px 14px; margin-bottom:14px; font-family:var(--font-mono); font-size:11.5px; color:#fca5a5; line-height:1.5;">
-            <strong>STATION CURRENTLY OCCUPIED:</strong> An active session is currently running on this console. Please end the active session before starting a new one.
+            <strong>STATION CURRENTLY OCCUPIED:</strong> An active session is currently running on this console. Please end or switch the active session before starting a new one.
           </div>
 
           <!-- REPEAT CUSTOMER RECOGNITION BANNER -->
@@ -348,12 +383,20 @@
 
           <div class="form-group">
             <label for="newCustomerPhone">PHONE NUMBER (10 DIGITS)</label>
-            <input type="tel" id="newCustomerPhone" class="form-control" placeholder="e.g. 9876543210" oninput="checkRepeatCustomer()">
+            <input type="tel" id="newCustomerPhone" class="form-control" placeholder="Enter 10-digit mobile number" oninput="checkRepeatCustomer()">
           </div>
 
           <div class="form-group">
             <label for="newCustomerName">CUSTOMER / TEAM NAME</label>
-            <input type="text" id="newCustomerName" class="form-control" placeholder="e.g. Rahul &amp; Friends" required oninput="checkRepeatCustomer()">
+            <input type="text" id="newCustomerName" class="form-control" placeholder="Enter customer or team name" required oninput="checkRepeatCustomer()">
+          </div>
+
+          <div class="form-group">
+            <label for="newGamerTag">GAMER TAG (CHARACTERS ONLY)</label>
+            <input type="text" id="newGamerTag" class="form-control" placeholder="Enter gamer tag (letters only)" pattern="[A-Za-z\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+            <small style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:4px;">
+              Accepts only characters &amp; spaces. Displayed in Hall of Fame.
+            </small>
           </div>
 
           <div class="form-group">
@@ -376,11 +419,11 @@
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
             <div class="form-group">
               <label for="newHourlyRate">RATE BASIS (RS.)</label>
-              <input type="number" id="newHourlyRate" class="form-control" value="150" min="50" step="10">
+              <input type="number" id="newHourlyRate" class="form-control" placeholder="Enter rate basis (numbers only)" value="150" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
             </div>
             <div class="form-group">
               <label for="newSessionNotes">NOTES / PASS TYPE</label>
-              <input type="text" id="newSessionNotes" class="form-control" placeholder="e.g. 2 Controllers, AC pass">
+              <input type="text" id="newSessionNotes" class="form-control" placeholder="Enter notes or pass type">
             </div>
           </div>
         </div>
@@ -388,6 +431,136 @@
         <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="closeStartSessionModal()">CANCEL</button>
           <button type="submit" class="btn-primary" id="btnSubmitStartSession">START &amp; LOCK STATION</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: EDIT SESSION
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalEditSession">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>EDIT SESSION DETAILS</h3>
+        <button type="button" class="modal-close-btn" onclick="closeEditSessionModal()">&times;</button>
+      </div>
+
+      <form id="editSessionForm" onsubmit="handleEditSessionSubmit(event)">
+        <input type="hidden" id="editSessionId">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="editCustomerName">CUSTOMER / TEAM NAME</label>
+            <input type="text" id="editCustomerName" class="form-control" placeholder="Enter customer or team name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="editCustomerPhone">PHONE NUMBER</label>
+            <input type="tel" id="editCustomerPhone" class="form-control" placeholder="Enter 10-digit mobile number">
+          </div>
+
+          <div class="form-group">
+            <label for="editGamerTag">GAMER TAG (CHARACTERS ONLY)</label>
+            <input type="text" id="editGamerTag" class="form-control" placeholder="Enter gamer tag (letters only)" pattern="[A-Za-z\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+            <small style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:4px;">
+              Only letters allowed. Appears in Hall of Fame.
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="editSessionGame">CURRENT GAME</label>
+            <select id="editSessionGame" class="form-control">
+              <option value="EA Sports FC 26">EA Sports FC 26</option>
+              <option value="WWE 2K26">WWE 2K26</option>
+              <option value="Mortal Kombat 1">Mortal Kombat 1</option>
+              <option value="God of War">God of War</option>
+              <option value="GTA V">GTA V</option>
+              <option value="Spider-Man 2">Spider-Man 2</option>
+              <option value="Red Dead Redemption 2">Red Dead Redemption 2</option>
+              <option value="It Takes Two">It Takes Two</option>
+              <option value="A Way Out">A Way Out</option>
+              <option value="Overcooked! All You Can Eat">Overcooked! All You Can Eat</option>
+              <option value="007 First Light">007 First Light</option>
+            </select>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="editHourlyRate">RATE BASIS (RS.)</label>
+              <input type="number" id="editHourlyRate" class="form-control" placeholder="Enter rate basis (numbers only)" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            </div>
+            <div class="form-group">
+              <label for="editSessionNotes">NOTES / PASS TYPE</label>
+              <input type="text" id="editSessionNotes" class="form-control" placeholder="Enter notes or pass type">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeEditSessionModal()">CANCEL</button>
+          <button type="submit" class="btn-primary">SAVE CHANGES</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: STATION & GAME SWITCH (PLAY MULTIPLE GAMES)
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalSwitchStation">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3>SWITCH STATION &amp; GAMES</h3>
+        <button type="button" class="modal-close-btn" onclick="closeSwitchStationModal()">&times;</button>
+      </div>
+
+      <form id="switchStationForm" onsubmit="handleSwitchStationSubmit(event)">
+        <input type="hidden" id="switchSessionId">
+        <div class="modal-body">
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-line); border-radius:var(--radius); padding:14px; margin-bottom:16px;">
+            <div style="font-family:var(--font-mono); font-size:11px; color:var(--neon-blue); letter-spacing:1px; text-transform:uppercase;">CURRENT ACTIVE SESSION</div>
+            <strong style="display:block; font-size:16px; color:#fff; margin-top:3px;" id="switchCurrentCustomer">--</strong>
+            <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted); margin-top:3px;" id="switchCurrentStationInfo">--</div>
+            <div style="font-family:var(--font-mono); font-size:11.5px; color:#e2e8f0; margin-top:4px;" id="switchGamesPlayedLog">Games played so far: --</div>
+          </div>
+
+          <div class="form-group">
+            <label for="targetStationSelect">SWITCH STATION TO</label>
+            <select id="targetStationSelect" class="form-control">
+              <option value="PS5 Station 1">PS5 Station 1 (Dedicated 4K 120Hz)</option>
+              <option value="PS5 Station 2">PS5 Station 2 (Dedicated 4K 120Hz)</option>
+            </select>
+            <small style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:4px;">
+              Keep same station if only switching games, or change station to transfer console.
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="targetGameSelect">SWITCH OR ADD NEW GAME</label>
+            <select id="targetGameSelect" class="form-control">
+              <option value="EA Sports FC 26">EA Sports FC 26</option>
+              <option value="WWE 2K26">WWE 2K26</option>
+              <option value="Mortal Kombat 1">Mortal Kombat 1</option>
+              <option value="God of War">God of War</option>
+              <option value="GTA V">GTA V</option>
+              <option value="Spider-Man 2">Spider-Man 2</option>
+              <option value="Red Dead Redemption 2">Red Dead Redemption 2</option>
+              <option value="It Takes Two">It Takes Two</option>
+              <option value="A Way Out">A Way Out</option>
+              <option value="Overcooked! All You Can Eat">Overcooked! All You Can Eat</option>
+              <option value="007 First Light">007 First Light</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="switchNotes">SWITCH REASON / TRANSFER NOTE</label>
+            <input type="text" id="switchNotes" class="form-control" placeholder="e.g. Switched game to MK1 for 2-player multiplayer">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeSwitchStationModal()">CANCEL</button>
+          <button type="submit" class="btn-primary">CONFIRM SWITCH</button>
         </div>
       </form>
     </div>
@@ -422,25 +595,196 @@
               <strong style="display:block; font-size:14px; color:#fff; margin-top:2px;" id="checkoutOutTime">NOW</strong>
             </div>
             <div>
-              <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">ELAPSED</span>
+              <span style="font-family:var(--font-mono); font-size:10px; color:var(--text-muted);">ACTIVE PLAYED</span>
               <strong style="display:block; font-size:14px; color:var(--neon-blue);" id="checkoutDuration">0 MIN</strong>
             </div>
           </div>
 
           <div class="form-group">
-            <label for="checkoutFinalAmount">TOTAL BILLING AMOUNT (RS.)</label>
-            <input type="number" id="checkoutFinalAmount" class="form-control" required min="0" step="10">
+            <label for="checkoutFinalAmount">CUSTOM PAYABLE AMOUNT (RS.)</label>
+            <input type="number" id="checkoutFinalAmount" class="form-control" placeholder="Enter custom payable amount (numbers only)" required min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            <small id="checkoutAmountHint" style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:5px;"></small>
           </div>
 
           <div class="form-group">
             <label for="checkoutNotes">FINAL NOTES</label>
-            <input type="text" id="checkoutNotes" class="form-control" placeholder="e.g. Paid UPI, DualSense returned">
+            <input type="text" id="checkoutNotes" class="form-control" placeholder="Enter final notes (e.g. Paid UPI, DualSense returned)">
+          </div>
+        </div>
+
+        <div class="modal-footer" style="flex-wrap:wrap; gap:8px;">
+          <button type="button" class="btn-secondary" onclick="openReceiptFromCheckout()" style="margin-right:auto;">
+            PRINT / PDF RECEIPT
+          </button>
+          <button type="button" class="btn-secondary" onclick="closeCheckoutModal()">CANCEL</button>
+          <button type="submit" class="btn-primary" style="background:#10b981; color:#000; border-color:#10b981;">COMPLETE CHECKOUT</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: SHARABLE & PRINTABLE BILLING RECEIPT (PDF)
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalReceiptPrint">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>CUSTOMER BILLING RECEIPT</h3>
+        <button type="button" class="modal-close-btn" onclick="closeReceiptModal()">&times;</button>
+      </div>
+
+      <div class="modal-body" id="printableReceiptArea">
+        <div class="receipt-card" style="background:#090d18; border:1px solid rgba(0, 212, 255, 0.3); border-radius:6px; padding:24px; color:#fff; font-family:var(--font-body);">
+          <div style="text-align:center; border-bottom:1px dashed rgba(255,255,255,0.15); padding-bottom:16px; margin-bottom:16px;">
+            <div style="font-family:var(--font-logo-infinity); font-weight:900; font-size:20px; letter-spacing:2px; color:var(--neon-blue);">INFINITY GAMERS</div>
+            <div style="font-family:var(--font-mono); font-size:10px; color:#94a3b8; letter-spacing:1.5px; margin-top:2px;">PLAY BEYOND LIMITS // PS5 GAMING LOUNGE</div>
+            <div style="font-size:12px; color:#cbd5e1; margin-top:6px;">Thoppampatti Pirivu, CBE - 17 • Phone: 99944 20447</div>
+            <div style="font-family:var(--font-mono); font-size:11px; color:#6be5ff; margin-top:4px;" id="receiptNumber">RECEIPT #IG-0000</div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px; font-size:13px;">
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:#94a3b8; display:block;">CUSTOMER NAME</span>
+              <strong id="receiptCustomerName" style="color:#fff; font-size:15px;">--</strong>
+            </div>
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:#94a3b8; display:block;">GAMER TAG</span>
+              <strong id="receiptGamerTag" style="color:var(--neon-pink); font-family:var(--font-mono);">--</strong>
+            </div>
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:#94a3b8; display:block;">MOBILE NUMBER</span>
+              <span id="receiptPhone" style="font-family:var(--font-mono);">--</span>
+            </div>
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:#94a3b8; display:block;">STATION CONSOLE</span>
+              <span id="receiptStation" style="font-weight:600; color:var(--neon-blue);">--</span>
+            </div>
+          </div>
+
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:4px; padding:12px; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12.5px;">
+              <span style="color:#94a3b8;">Game(s) Played:</span>
+              <strong id="receiptGames" style="color:#fff; text-align:right;">--</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12.5px;">
+              <span style="color:#94a3b8;">Session Time:</span>
+              <span id="receiptTimeRange" style="font-family:var(--font-mono);">--</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:12.5px;">
+              <span style="color:#94a3b8;">Playing Duration:</span>
+              <strong id="receiptDuration" style="color:var(--neon-blue); font-family:var(--font-mono);">--</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:12.5px;">
+              <span style="color:#94a3b8;">Rate Basis:</span>
+              <span id="receiptRateBasis" style="font-family:var(--font-mono);">--</span>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(255,255,255,0.15); padding-top:14px; margin-bottom:14px;">
+            <span style="font-family:var(--font-heading); font-size:15px; color:#fff;">TOTAL PAYABLE:</span>
+            <strong id="receiptTotalAmount" style="font-family:var(--font-mono); font-size:24px; color:#10b981;">Rs. 0</strong>
+          </div>
+
+          <div style="text-align:center; font-family:var(--font-mono); font-size:11px; color:#94a3b8; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
+            THANK YOU FOR GAMING AT INFINITY GAMERS!
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="flex-wrap:wrap; gap:8px;">
+        <button type="button" class="btn-primary" onclick="printReceiptDirectly()" style="background:#00d4ff; color:#000;">
+          PRINT / SAVE AS PDF
+        </button>
+        <button type="button" class="btn-secondary" onclick="shareReceiptWhatsApp()">
+          SHARE ON WHATSAPP
+        </button>
+        <button type="button" class="btn-secondary" onclick="copyReceiptText()">
+          COPY TEXT
+        </button>
+        <button type="button" class="btn-secondary" onclick="closeReceiptModal()">
+          CLOSE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: ADD / EDIT HALL OF FAME PLAYER (ADMIN SELECTION)
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalHallOfFamePlayer">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="hofModalTitle">ADD PLAYER TO HALL OF FAME</h3>
+        <button type="button" class="modal-close-btn" onclick="closeHallOfFameModal()">&times;</button>
+      </div>
+
+      <form id="hofPlayerForm" onsubmit="handleSaveHallOfFamePlayer(event)">
+        <input type="hidden" id="hofPlayerId">
+        <div class="modal-body">
+          <p style="color:var(--text-dim); font-size:13px; margin-bottom:14px;">
+            Select a player from session records or add a custom champion. Only admin-approved entries appear in the public Hall of Fame.
+          </p>
+
+          <div class="form-group" id="hofRecentPickGroup">
+            <label for="hofQuickPick">QUICK SELECT FROM RECENT PLAYERS</label>
+            <select id="hofQuickPick" class="form-control" onchange="handleHofQuickPickChange()">
+              <option value="">-- Choose player or enter manually below --</option>
+            </select>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="hofRank">OFFICIAL RANK (#)</label>
+              <input type="number" id="hofRank" class="form-control" min="1" step="1" required placeholder="e.g. 1" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            </div>
+            <div class="form-group">
+              <label for="hofGamerTag">GAMER TAG (CHARACTERS ONLY)</label>
+              <input type="text" id="hofGamerTag" class="form-control" placeholder="Enter gamer tag (letters only)" pattern="[A-Za-z\s]+" required oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="hofCustomerName">CUSTOMER / PLAYER NAME</label>
+            <input type="text" id="hofCustomerName" class="form-control" placeholder="Enter customer name" required>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="hofPhone">PHONE NUMBER (OPTIONAL)</label>
+              <input type="tel" id="hofPhone" class="form-control" placeholder="Enter mobile number">
+            </div>
+            <div class="form-group">
+              <label for="hofTier">TIER / HONORS BADGE</label>
+              <select id="hofTier" class="form-control">
+                <option value="GRAND CHAMPION">GRAND CHAMPION</option>
+                <option value="PLATINUM ELITE">PLATINUM ELITE</option>
+                <option value="GOLD CONTENDER">GOLD CONTENDER</option>
+                <option value="DIAMOND SQUAD">DIAMOND SQUAD</option>
+                <option value="PRO GAMER">PRO GAMER</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="hofFavoriteGame">PRIMARY / TOP TITLE</label>
+              <input type="text" id="hofFavoriteGame" class="form-control" placeholder="e.g. EA Sports FC 26" required>
+            </div>
+            <div class="form-group">
+              <label for="hofTotalHours">VERIFIED HOURS</label>
+              <input type="number" id="hofTotalHours" class="form-control" step="0.1" min="0" placeholder="e.g. 18.5" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="hofNotes">ACHIEVEMENT / TOURNAMENT RECORD</label>
+            <input type="text" id="hofNotes" class="form-control" placeholder="e.g. Undefeated FC 26 Weekend Knockout Winner">
           </div>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn-secondary" onclick="closeCheckoutModal()">CANCEL</button>
-          <button type="submit" class="btn-primary" style="background:#10b981; color:#000; border-color:#10b981;">COMPLETE CHECKOUT</button>
+          <button type="button" class="btn-secondary" onclick="closeHallOfFameModal()">CANCEL</button>
+          <button type="submit" class="btn-primary" id="btnSubmitHof">SAVE TO HALL OF FAME</button>
         </div>
       </form>
     </div>

@@ -450,9 +450,23 @@ textarea.form-control {
   border: 1px solid var(--neon-blue);
   animation: pulseGlow 2s infinite ease-in-out;
 }
+.station-badge.paused {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid #f59e0b;
+  animation: pulseAmber 1.8s infinite ease-in-out;
+}
 @keyframes pulseGlow {
   0%, 100% { box-shadow: 0 0 6px rgba(0, 212, 255, 0.3); }
   50% { box-shadow: 0 0 16px rgba(0, 212, 255, 0.6); }
+}
+@keyframes pulseAmber {
+  0%, 100% { box-shadow: 0 0 6px rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(245, 158, 11, 0.6); }
+}
+.station-live-card.paused {
+  border-color: #f59e0b;
+  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.2);
 }
 
 .station-player-info {
@@ -698,4 +712,103 @@ textarea.form-control {
   .station-live-grid { grid-template-columns: 1fr; }
   .admin-header-bar { flex-direction: column; align-items: flex-start; }
   .admin-actions-bar { width: 100%; justify-content: flex-start; }
+}
+
+/* SUB-ACTION BUTTONS FOR LIVE STATION CARDS */
+.station-actions-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.station-subactions-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.btn-subaction {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-line);
+  color: #cbd5e1;
+  font-family: var(--font-sub);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 6px 4px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.btn-subaction:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: var(--neon-blue);
+  color: #fff;
+}
+.btn-subaction.btn-pause-active {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: #f59e0b;
+  color: #fbbf24;
+}
+.btn-subaction.btn-pause-active:hover {
+  background: #f59e0b;
+  color: #000;
+}
+.btn-subaction.btn-resume {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+.btn-subaction.btn-resume:hover {
+  background: #10b981;
+  color: #000;
+}
+
+/* PRINT & PDF EXPORT RULES */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .admin-navbar,
+  .admin-header-bar,
+  .station-live-grid,
+  .admin-tabs-nav,
+  .table-controls-bar,
+  .modal-header,
+  .modal-footer,
+  .toast-msg,
+  #modalStartSession,
+  #modalEditSession,
+  #modalSwitchStation,
+  #modalCheckout,
+  #modalHallOfFamePlayer,
+  #modalApiSettings {
+    display: none !important;
+  }
+  .modal-backdrop#modalReceiptPrint {
+    position: static !important;
+    background: transparent !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+  .modal-dialog {
+    background: #fff !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .receipt-card {
+    border: 1px solid #111 !important;
+    color: #000 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  .receipt-card * {
+    color: #000 !important;
+  }
 }
