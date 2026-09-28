@@ -1858,6 +1858,7 @@ async function loadNews() {
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/news?_t=${Date.now()}`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
     const news = await res.json();
 
     if (!Array.isArray(news) || news.length === 0) {
@@ -1977,14 +1978,14 @@ window.testApiConnection = async function() {
     const res = await fetch(`${url}/api/health?_t=${Date.now()}`);
     if (res.ok) {
       const data = await res.json();
-      result.innerHTML = `<strong style="color:#10b981;">SUCCESS!</strong> Connected to backend API (uptime: ${Math.round(data.uptime || 0)}s).`;
+      result.textContent = `SUCCESS! Connected to backend API (uptime: ${Math.round(data.uptime || 0)}s).`;
       result.style.background = "rgba(16, 185, 129, 0.12)";
       result.style.color = "#6ee7b7";
     } else {
       throw new Error("HTTP " + res.status);
     }
   } catch (err) {
-    result.innerHTML = `<strong style="color:#ef4444;">CONNECTION FAILED:</strong> ${err.message}. Make sure backend server is active and allows CORS.`;
+    result.textContent = `CONNECTION FAILED: ${err.message}. Make sure backend server is active and allows CORS.`;
     result.style.background = "rgba(239, 68, 68, 0.15)";
     result.style.color = "#fca5a5";
   }
