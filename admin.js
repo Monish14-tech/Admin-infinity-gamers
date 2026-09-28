@@ -984,7 +984,7 @@ window.handleSwitchStationSubmit = async function(e) {
   }
 };
 
-// 10. CHECKOUT / END SESSION MODAL (CUSTOM PAYABLE NUMERIC INPUT)
+// 10. CHECKOUT / END SESSION MODAL (WITH BASE + ADDITIONAL CHARGES BREAKDOWN)
 window.openCheckoutModal = function(sessionId) {
   const session = allSessions.find(s => s.id === sessionId);
   if (!session) return;
@@ -999,21 +999,61 @@ window.openCheckoutModal = function(sessionId) {
   const elapsedMins = Math.max(1, calculateElapsedMinutes(session));
   document.getElementById("checkoutDuration").textContent = `${elapsedMins} MIN`;
 
-  const baseRate = Number(session.amount) || 150;
+  const baseRate = Number(session.rateBasis) || Number(session.amount) || 148;
   const billAmount = Math.max(50, Math.ceil((elapsedMins / 60) * baseRate));
   
-  // Set custom input payable amount
-  const finalAmountInput = document.getElementById("checkoutFinalAmount");
-  if (finalAmountInput) finalAmountInput.value = billAmount;
+  // Base session amount
+  const baseInput = document.getElementById("checkoutBaseAmount");
+  if (baseInput) baseInput.value = session.baseAmount !== undefined ? session.baseAmount : billAmount;
+
+  // Additional charges (e.g. extra controllers, drinks, snacks)
+  const addlInput = document.getElementById("checkoutAdditionalCharges");
+  if (addlInput) addlInput.value = session.additionalCharges || 0;
+
+  const addlNote = document.getElementById("checkoutAdditionalNote");
+  if (addlNote) addlNote.value = session.additionalNote || "";
+
+  updateCheckoutTotal();
 
   const hintEl = document.getElementById("checkoutAmountHint");
   if (hintEl) {
-    hintEl.textContent = `Suggested Rate: Rs. ${billAmount} (Rate: Rs. ${baseRate}/hr • Elapsed: ${elapsedMins} min). Enter custom amount as needed.`;
+    hintEl.textContent = `Suggested: Rs. ${billAmount} (Rate: Rs. ${baseRate} • Elapsed: ${elapsedMins} min)`;
   }
 
   document.getElementById("checkoutNotes").value = session.notes || "";
 
   if (modal) modal.classList.add("open");
+};
+
+window.updateCheckoutTotal = function() {
+  const base = Number(document.getElementById("checkoutBaseAmount")?.value) || 0;
+  const addl = Number(document.getElementById("checkoutAdditionalCharges")?.value) || 0;
+  const total = base + addl;
+  const finalInput = document.getElementById("checkoutFinalAmount");
+  if (finalInput) finalInput.value = total;
+  const formulaEl = document.getElementById("checkoutTotalFormula");
+  if (formulaEl) formulaEl.textContent = `Rs. ${base} + Rs. ${addl} = Rs. ${total}`;
+};
+
+window.addCheckoutChargePreset = function(amount, desc) {
+  const addlInput = document.getElementById("checkoutAdditionalCharges");
+  const current = Number(addlInput?.value) || 0;
+  if (addlInput) addlInput.value = current + amount;
+
+  const noteInput = document.getElementById("checkoutAdditionalNote");
+  if (noteInput) {
+    const existing = noteInput.value.trim();
+    noteInput.value = existing ? `${existing}, ${desc}` : desc;
+  }
+  updateCheckoutTotal();
+};
+
+window.clearCheckoutCharges = function() {
+  const addlInput = document.getElementById("checkoutAdditionalCharges");
+  if (addlInput) addlInput.value = 0;
+  const noteInput = document.getElementById("checkoutAdditionalNote");
+  if (noteInput) noteInput.value = "";
+  updateCheckoutTotal();
 };
 
 window.closeCheckoutModal = function() {
@@ -1024,8 +1064,11 @@ window.closeCheckoutModal = function() {
 window.handleCheckoutSubmit = async function(e) {
   e.preventDefault();
   const sessionId = document.getElementById("checkoutSessionId").value;
-  const amount = Number(document.getElementById("checkoutFinalAmount").value) || 0;
-  const notes = document.getElementById("checkoutNotes").value.trim();
+  const baseAmount = Number(document.getElementById("checkoutBaseAmount")?.value) || 0;
+  const additionalCharges = Number(document.getElementById("checkoutAdditionalCharges")?.value) || 0;
+  const additionalNote = document.getElementById("checkoutAdditionalNote")?.value.trim() || "";
+  const amount = Number(document.getElementById("checkoutFinalAmount")?.value) || (baseAmount + additionalCharges);
+  const notes = document.getElementById("checkoutNotes")?.value.trim() || "";
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/admin/sessions/${sessionId}?_t=${Date.now()}`, {
@@ -1036,6 +1079,9 @@ window.handleCheckoutSubmit = async function(e) {
       },
       body: JSON.stringify({
         checkout: true,
+        baseAmount,
+        additionalCharges,
+        additionalNote,
         amount,
         notes,
         outTime: new Date().toISOString()
@@ -1071,6 +1117,10 @@ window.openReceiptModal = function(sessionId) {
     ? session.gamesPlayed.join(", ") 
     : (session.game || "FC 26");
 
+  const rateVal = session.rateBasis || session.baseAmount || session.amount || 148;
+  const addlCharges = Number(session.additionalCharges) || 0;
+  const baseAmt = session.baseAmount !== undefined ? Number(session.baseAmount) : (Number(session.amount || 148) - addlCharges);
+
   activeReceiptData = {
     sessionId: session.id,
     receiptId: "IG-" + (session.id ? session.id.slice(-6).toUpperCase() : Math.floor(100000 + Math.random() * 900000)),
@@ -1083,8 +1133,11 @@ window.openReceiptModal = function(sessionId) {
     outTime: session.outTime ? formatDateTime(session.outTime) : "IN PROGRESS",
     duration: `${dur} MIN (${hours} HRS)`,
     durationMinutes: dur,
-    rateBasis: `Rs. ${session.rateBasis || session.amount || 150} / Hour`,
-    totalAmount: session.amount || 150
+    rateBasis: `Rs. ${rateVal}`,
+    baseAmount: baseAmt,
+    additionalCharges: addlCharges,
+    additionalNote: session.additionalNote || "",
+    totalAmount: session.amount || (baseAmt + addlCharges)
   };
 
   document.getElementById("receiptNumber").textContent = `RECEIPT #${activeReceiptData.receiptId}`;
@@ -1097,6 +1150,19 @@ window.openReceiptModal = function(sessionId) {
   document.getElementById("receiptDuration").textContent = activeReceiptData.duration;
   document.getElementById("receiptRateBasis").textContent = activeReceiptData.rateBasis;
   document.getElementById("receiptTotalAmount").textContent = `Rs. ${activeReceiptData.totalAmount}`;
+
+  // Additional charges line item
+  const addRow = document.getElementById("receiptAdditionalRow");
+  if (addRow) {
+    if (activeReceiptData.additionalCharges > 0) {
+      addRow.style.display = "flex";
+      const desc = activeReceiptData.additionalNote ? ` (${activeReceiptData.additionalNote})` : "";
+      document.getElementById("receiptAdditionalLabel").textContent = `Additional Charges${desc}:`;
+      document.getElementById("receiptAdditionalAmount").textContent = `+ Rs. ${activeReceiptData.additionalCharges}`;
+    } else {
+      addRow.style.display = "none";
+    }
+  }
 
   const modal = document.getElementById("modalReceiptPrint");
   if (modal) modal.classList.add("open");
@@ -1127,6 +1193,11 @@ window.printReceiptDirectly = function() {
 window.shareReceiptWhatsApp = function() {
   if (!activeReceiptData) return;
   const phoneClean = (activeReceiptData.phone || '').replace(/[^0-9]/g, '');
+  let addLine = "";
+  if (activeReceiptData.additionalCharges > 0) {
+    const reason = activeReceiptData.additionalNote ? ` (${activeReceiptData.additionalNote})` : "";
+    addLine = `\nAdditional Charges${reason}: Rs. ${activeReceiptData.additionalCharges}`;
+  }
   const text = 
 `*INFINITY GAMERS - GAMING SESSION BILL*
 ---------------------------------------
@@ -1136,6 +1207,7 @@ Gamer Tag: @${activeReceiptData.gamerTag}
 Station: ${activeReceiptData.station}
 Game(s): ${activeReceiptData.games}
 Duration: ${activeReceiptData.duration}
+Rate Basis: ${activeReceiptData.rateBasis}${addLine}
 *Total Payable: Rs. ${activeReceiptData.totalAmount}*
 ---------------------------------------
 Thank you for playing at Infinity Gamers PS5 Lounge!
@@ -1150,6 +1222,11 @@ Location: Thoppampatti Pirivu, CBE - 17`;
 
 window.copyReceiptText = function() {
   if (!activeReceiptData) return;
+  let addLine = "";
+  if (activeReceiptData.additionalCharges > 0) {
+    const reason = activeReceiptData.additionalNote ? ` (${activeReceiptData.additionalNote})` : "";
+    addLine = `\nAdditional Charges${reason}: Rs. ${activeReceiptData.additionalCharges}`;
+  }
   const text = 
 `INFINITY GAMERS - GAMING SESSION BILL
 Receipt No: ${activeReceiptData.receiptId}
@@ -1157,6 +1234,7 @@ Customer: ${activeReceiptData.customerName} (@${activeReceiptData.gamerTag})
 Station: ${activeReceiptData.station}
 Game(s): ${activeReceiptData.games}
 Duration: ${activeReceiptData.duration}
+Rate Basis: ${activeReceiptData.rateBasis}${addLine}
 Total Payable: Rs. ${activeReceiptData.totalAmount}
 Status: PAID`;
 
@@ -1208,12 +1286,46 @@ window.openEditBillModal = function(sessionId) {
 
   const durationVal = session.durationMinutes || calculateElapsedMinutes(session);
   document.getElementById("editBillDuration").value = durationVal;
-  document.getElementById("editBillRateBasis").value = session.rateBasis || session.amount || 150;
-  document.getElementById("editBillAmount").value = session.amount || 0;
+  document.getElementById("editBillRateBasis").value = session.rateBasis || session.baseAmount || session.amount || 148;
+  
+  const addlCharges = Number(session.additionalCharges) || 0;
+  const baseAmt = session.baseAmount !== undefined ? Number(session.baseAmount) : (Number(session.amount || 148) - addlCharges);
+  
+  const baseInput = document.getElementById("editBillBaseAmount");
+  if (baseInput) baseInput.value = baseAmt;
+
+  const addlInput = document.getElementById("editBillAdditionalCharges");
+  if (addlInput) addlInput.value = addlCharges;
+
+  const addlNote = document.getElementById("editBillAdditionalNote");
+  if (addlNote) addlNote.value = session.additionalNote || "";
+
+  document.getElementById("editBillAmount").value = session.amount || (baseAmt + addlCharges);
   document.getElementById("editBillNotes").value = session.notes || "";
+
+  updateEditBillTotal();
 
   const modal = document.getElementById("modalEditBill");
   if (modal) modal.classList.add("open");
+};
+
+window.updateEditBillTotal = function() {
+  const base = Number(document.getElementById("editBillBaseAmount")?.value) || 0;
+  const addl = Number(document.getElementById("editBillAdditionalCharges")?.value) || 0;
+  const total = base + addl;
+  const amountInput = document.getElementById("editBillAmount");
+  if (amountInput) amountInput.value = total;
+  const formulaEl = document.getElementById("editBillTotalFormula");
+  if (formulaEl) formulaEl.textContent = `Rs. ${base} + Rs. ${addl} = Rs. ${total}`;
+};
+
+window.recalculateEditBillTotal = function() {
+  const dur = Number(document.getElementById("editBillDuration")?.value) || 1;
+  const rate = Number(document.getElementById("editBillRateBasis")?.value) || 148;
+  const base = Math.max(50, Math.ceil((dur / 60) * rate));
+  const baseInput = document.getElementById("editBillBaseAmount");
+  if (baseInput) baseInput.value = base;
+  updateEditBillTotal();
 };
 
 window.closeEditBillModal = function() {
@@ -1230,8 +1342,11 @@ window.handleEditBillSubmit = async function(e) {
   const station = document.getElementById("editBillStation").value;
   const gamesRaw = document.getElementById("editBillGames").value.trim();
   const durationMinutes = Number(document.getElementById("editBillDuration").value) || 1;
-  const rateBasis = Number(document.getElementById("editBillRateBasis").value) || 150;
-  const amount = Number(document.getElementById("editBillAmount").value) || 0;
+  const rateBasis = Number(document.getElementById("editBillRateBasis").value) || 148;
+  const baseAmount = Number(document.getElementById("editBillBaseAmount")?.value) || 0;
+  const additionalCharges = Number(document.getElementById("editBillAdditionalCharges")?.value) || 0;
+  const additionalNote = document.getElementById("editBillAdditionalNote")?.value.trim() || "";
+  const amount = Number(document.getElementById("editBillAmount").value) || (baseAmount + additionalCharges);
   const notes = document.getElementById("editBillNotes").value.trim();
 
   const gamesArray = gamesRaw ? gamesRaw.split(",").map(g => g.trim()).filter(Boolean) : ["EA Sports FC 26"];
@@ -1253,6 +1368,9 @@ window.handleEditBillSubmit = async function(e) {
         gamesPlayed: gamesArray,
         durationMinutes,
         rateBasis,
+        baseAmount,
+        additionalCharges,
+        additionalNote,
         amount,
         notes
       })
@@ -1478,12 +1596,14 @@ async function loadLeaderboard() {
 
     tbody.innerHTML = currentHallOfFame.map((p, idx) => {
       let tierColor = "#8492a6";
-      if (p.tier === "GRAND CHAMPION") tierColor = "#ffd700";
-      else if (p.tier === "PLATINUM ELITE") tierColor = "#e5e4e2";
-      else if (p.tier === "GOLD CONTENDER") tierColor = "#cd7f32";
-      else if (p.tier === "DIAMOND SQUAD") tierColor = "#00d4ff";
+      const tUpper = String(p.tier || '').toUpperCase();
+      if (tUpper.includes("INFINITY")) tierColor = "#00d4ff";
+      else if (tUpper.includes("ELITE")) tierColor = "#ffd700";
+      else if (tUpper.includes("POWER")) tierColor = "#ff007f";
+      else if (tUpper.includes("RISE")) tierColor = "#38bdf8";
+      else if (tUpper.includes("IGNITE")) tierColor = "#ff6b00";
 
-      const points = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 100);
+      const points = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 10);
 
       return `
         <tr>
@@ -1531,11 +1651,24 @@ async function loadLeaderboard() {
   }
 }
 
+function getTierFromPoints(pts) {
+  if (pts >= 1000) return "LV 5: INFINITY";
+  if (pts >= 500) return "LV 4: ELITE";
+  if (pts >= 250) return "LV 3: POWER";
+  if (pts >= 100) return "LV 2: RISE";
+  return "LV 1: IGNITE";
+}
+
 window.handleHofHoursChange = function() {
   const hours = Number(document.getElementById("hofTotalHours")?.value) || 0;
+  const pts = Math.round(hours * 10);
   const ptsInput = document.getElementById("hofLoyaltyPoints");
   if (ptsInput) {
-    ptsInput.value = Math.round(hours * 100);
+    ptsInput.value = pts;
+  }
+  const tierSelect = document.getElementById("hofTier");
+  if (tierSelect) {
+    tierSelect.value = getTierFromPoints(pts);
   }
 };
 
@@ -1569,7 +1702,8 @@ window.openAddHallOfFameModal = function(prefillData = null) {
   const nextRank = currentHallOfFame.length + 1;
   document.getElementById("hofRank").value = nextRank;
   document.getElementById("hofTotalHours").value = "5.0";
-  document.getElementById("hofLoyaltyPoints").value = "500";
+  document.getElementById("hofLoyaltyPoints").value = "50";
+  document.getElementById("hofTier").value = "LV 1: IGNITE";
   document.getElementById("hofSessionCount").value = "1";
 
   if (prefillData) {
@@ -1579,7 +1713,9 @@ window.openAddHallOfFameModal = function(prefillData = null) {
     if (prefillData.favoriteGame) document.getElementById("hofFavoriteGame").value = prefillData.favoriteGame;
     if (prefillData.totalHours) {
       document.getElementById("hofTotalHours").value = prefillData.totalHours;
-      document.getElementById("hofLoyaltyPoints").value = Math.round(Number(prefillData.totalHours) * 100);
+      const pts = Math.round(Number(prefillData.totalHours) * 10);
+      document.getElementById("hofLoyaltyPoints").value = pts;
+      document.getElementById("hofTier").value = getTierFromPoints(pts);
     }
   }
 
@@ -1590,7 +1726,7 @@ window.openEditHallOfFameModal = function(id) {
   const p = currentHallOfFame.find(x => x.id === id);
   if (!p) return;
 
-  const currentPts = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 100);
+  const currentPts = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 10);
 
   document.getElementById("hofPlayerId").value = p.id;
   document.getElementById("hofModalTitle").textContent = "EDIT HALL OF FAME ENTRY";
@@ -1598,7 +1734,7 @@ window.openEditHallOfFameModal = function(id) {
   document.getElementById("hofGamerTag").value = p.gamerTag || "";
   document.getElementById("hofCustomerName").value = p.customerName || "";
   document.getElementById("hofPhone").value = p.phone || "";
-  document.getElementById("hofTier").value = p.tier || "GRAND CHAMPION";
+  document.getElementById("hofTier").value = p.tier || getTierFromPoints(currentPts);
   document.getElementById("hofFavoriteGame").value = p.favoriteGame || "EA Sports FC 26";
   document.getElementById("hofTotalHours").value = p.totalHours || 1.0;
   document.getElementById("hofLoyaltyPoints").value = currentPts;
@@ -1628,14 +1764,11 @@ window.handleHofQuickPickChange = function() {
 
     const totalMins = matched.reduce((acc, s) => acc + (Number(s.durationMinutes) || 0), 0);
     const hours = Math.max(1, Number((totalMins / 60).toFixed(1)));
+    const pts = Math.round(hours * 10);
     document.getElementById("hofTotalHours").value = hours;
-    document.getElementById("hofLoyaltyPoints").value = Math.round(hours * 100);
+    document.getElementById("hofLoyaltyPoints").value = pts;
     document.getElementById("hofSessionCount").value = matched.length;
-
-    let tier = "GOLD CONTENDER";
-    if (hours >= 15) tier = "GRAND CHAMPION";
-    else if (hours >= 8) tier = "PLATINUM ELITE";
-    document.getElementById("hofTier").value = tier;
+    document.getElementById("hofTier").value = getTierFromPoints(pts);
   }
 };
 
@@ -1646,10 +1779,10 @@ window.handleSaveHallOfFamePlayer = async function(e) {
   const gamerTag = (document.getElementById("hofGamerTag")?.value || "").replace(/[^a-zA-Z0-9\s]/g, "").trim();
   const customerName = document.getElementById("hofCustomerName")?.value.trim() || "";
   const phone = document.getElementById("hofPhone")?.value.trim() || "";
-  const tier = document.getElementById("hofTier")?.value || "GOLD CONTENDER";
-  const favoriteGame = document.getElementById("hofFavoriteGame")?.value.trim() || "EA Sports FC 26";
   const totalHours = Number(document.getElementById("hofTotalHours")?.value) || 1.0;
-  const loyaltyPoints = Number(document.getElementById("hofLoyaltyPoints")?.value) || Math.round(totalHours * 100);
+  const loyaltyPoints = Number(document.getElementById("hofLoyaltyPoints")?.value) || Math.round(totalHours * 10);
+  const tier = document.getElementById("hofTier")?.value || getTierFromPoints(loyaltyPoints);
+  const favoriteGame = document.getElementById("hofFavoriteGame")?.value.trim() || "EA Sports FC 26";
   const sessionCount = Number(document.getElementById("hofSessionCount")?.value) || 1;
   const notes = document.getElementById("hofNotes")?.value.trim() || "";
 
@@ -1704,7 +1837,7 @@ window.openRedeemPointsModal = function(id) {
   }
 
   activeRedeemPlayer = p;
-  const currentPts = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 100);
+  const currentPts = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 10);
 
   document.getElementById("redeemPlayerId").value = p.id;
   document.getElementById("redeemPlayerName").textContent = p.customerName || "Player";
@@ -1730,7 +1863,7 @@ window.updateRedeemCalculation = function() {
   if (!activeRedeemPlayer) return;
   const currentPts = activeRedeemPlayer.loyaltyPoints !== undefined 
     ? Number(activeRedeemPlayer.loyaltyPoints) 
-    : Math.round((Number(activeRedeemPlayer.totalHours) || 0) * 100);
+    : Math.round((Number(activeRedeemPlayer.totalHours) || 0) * 10);
 
   const action = document.getElementById("redeemActionType")?.value || "deduct";
   const amount = Number(document.getElementById("redeemPointsAmount")?.value) || 0;
@@ -1775,7 +1908,7 @@ window.handleRedeemPointsSubmit = async function(e) {
 
   const currentPts = activeRedeemPlayer.loyaltyPoints !== undefined 
     ? Number(activeRedeemPlayer.loyaltyPoints) 
-    : Math.round((Number(activeRedeemPlayer.totalHours) || 0) * 100);
+    : Math.round((Number(activeRedeemPlayer.totalHours) || 0) * 10);
 
   let newPoints = currentPts;
   if (action === "deduct") {
@@ -1785,6 +1918,8 @@ window.handleRedeemPointsSubmit = async function(e) {
   } else if (action === "add") {
     newPoints = currentPts + Math.max(0, amount);
   }
+
+  const updatedTier = getTierFromPoints(newPoints);
 
   let noteUpdate = activeRedeemPlayer.notes || "";
   if (reason) {
@@ -1800,6 +1935,7 @@ window.handleRedeemPointsSubmit = async function(e) {
       },
       body: JSON.stringify({
         loyaltyPoints: newPoints,
+        tier: updatedTier,
         notes: noteUpdate
       })
     });

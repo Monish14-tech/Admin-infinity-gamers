@@ -445,7 +445,13 @@
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
             <div class="form-group">
               <label for="newHourlyRate">RATE BASIS (RS.)</label>
-              <input type="number" id="newHourlyRate" class="form-control" placeholder="Enter rate basis (numbers only)" value="150" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+              <input type="number" id="newHourlyRate" class="form-control" placeholder="Enter rate basis (numbers only)" value="148" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+              <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:4px;">
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 148">₹148 (Wkday 1h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 198">₹198 (Wkend 1h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 288">₹288 (Wkday 2h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 348">₹348 (Wkend 2h)</button>
+              </div>
             </div>
             <div class="form-group">
               <label for="newSessionNotes">NOTES / PASS TYPE</label>
@@ -632,10 +638,36 @@
             </div>
           </div>
 
+          <!-- BILL BREAKDOWN: BASE AMOUNT & ADDITIONAL CHARGES -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="checkoutBaseAmount">BASE SESSION (RS.)</label>
+              <input type="number" id="checkoutBaseAmount" class="form-control" placeholder="Base amount" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, ''); updateCheckoutTotal();">
+              <small id="checkoutAmountHint" style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:4px;"></small>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="checkoutAdditionalCharges">ADDITIONAL CHARGES (RS.)</label>
+              <input type="number" id="checkoutAdditionalCharges" class="form-control" placeholder="0" value="0" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, ''); updateCheckoutTotal();">
+              <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:4px;">
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="addCheckoutChargePreset(50, 'Extra Controller (+₹50)')">+₹50 Controller</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="addCheckoutChargePreset(100, '2x Extra Controllers (+₹100)')">+₹100 (2 Ctrl)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="addCheckoutChargePreset(99, 'Lifetime Membership Fee (+₹99)')">+₹99 Membership</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="clearCheckoutCharges()">Clear</button>
+              </div>
+            </div>
+          </div>
+
           <div class="form-group">
-            <label for="checkoutFinalAmount">CUSTOM PAYABLE AMOUNT (RS.)</label>
-            <input type="number" id="checkoutFinalAmount" class="form-control" placeholder="Enter custom payable amount (numbers only)" required min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-            <small id="checkoutAmountHint" style="display:block; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); margin-top:5px;"></small>
+            <label for="checkoutAdditionalNote">ADDITIONAL CHARGES REASON / DESCRIPTION</label>
+            <input type="text" id="checkoutAdditionalNote" class="form-control" placeholder="e.g. Extra Controller (₹50), Cold Drink, Snacks, Membership">
+          </div>
+
+          <div class="form-group" style="background:rgba(0, 255, 157, 0.05); border:1px solid rgba(0, 255, 157, 0.25); border-radius:var(--radius); padding:12px;">
+            <label for="checkoutFinalAmount" style="color:var(--neon-green); font-weight:700; display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span>TOTAL PAYABLE AMOUNT (RS.)</span>
+              <span id="checkoutTotalFormula" style="font-family:var(--font-mono); font-size:11px; font-weight:normal; color:#94a3b8;">Base + Addl</span>
+            </label>
+            <input type="number" id="checkoutFinalAmount" class="form-control" placeholder="Total payable amount" required min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="border-color:var(--neon-green); font-size:18px; font-weight:700; color:var(--neon-green);">
           </div>
 
           <div class="form-group">
@@ -709,6 +741,10 @@
             <div style="display:flex; justify-content:space-between; font-size:12.5px;">
               <span style="color:#94a3b8;">Rate Basis:</span>
               <span id="receiptRateBasis" style="font-family:var(--font-mono);">--</span>
+            </div>
+            <div id="receiptAdditionalRow" style="display:none; justify-content:space-between; margin-top:6px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.08); font-size:12.5px;">
+              <span style="color:#94a3b8;" id="receiptAdditionalLabel">Additional Charges:</span>
+              <strong id="receiptAdditionalAmount" style="color:#f59e0b; font-family:var(--font-mono);">Rs. 0</strong>
             </div>
           </div>
 
@@ -794,19 +830,39 @@
             <input type="text" id="editBillGames" class="form-control" placeholder="e.g. EA Sports FC 26, Mortal Kombat 1">
           </div>
 
-          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
-            <div class="form-group">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div class="form-group" style="margin-bottom:0;">
               <label for="editBillDuration">PLAYED (MIN)</label>
-              <input type="number" id="editBillDuration" class="form-control" placeholder="Duration (min)" min="1" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+              <input type="number" id="editBillDuration" class="form-control" placeholder="Duration (min)" min="1" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, ''); recalculateEditBillTotal();" required>
             </div>
-            <div class="form-group">
-              <label for="editBillRateBasis">RATE / HR (RS.)</label>
-              <input type="number" id="editBillRateBasis" class="form-control" placeholder="Hourly rate" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="editBillRateBasis">RATE BASIS (RS.)</label>
+              <input type="number" id="editBillRateBasis" class="form-control" placeholder="Rate basis" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, ''); recalculateEditBillTotal();">
             </div>
-            <div class="form-group">
-              <label for="editBillAmount" style="color:#10b981; font-weight:700;">PAYABLE (RS.)</label>
-              <input type="number" id="editBillAmount" class="form-control" placeholder="Final amount (Rs.)" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="border-color:#10b981; font-weight:700; color:#10b981;">
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="editBillBaseAmount">BASE SESSION (RS.)</label>
+              <input type="number" id="editBillBaseAmount" class="form-control" placeholder="Base session amount" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, ''); updateEditBillTotal();">
             </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label for="editBillAdditionalCharges">ADDITIONAL CHARGES (RS.)</label>
+              <input type="number" id="editBillAdditionalCharges" class="form-control" placeholder="0" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, ''); updateEditBillTotal();">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="editBillAdditionalNote">ADDITIONAL CHARGES REASON / NOTE</label>
+            <input type="text" id="editBillAdditionalNote" class="form-control" placeholder="e.g. Extra Controller (₹50), Snacks, Drinks">
+          </div>
+
+          <div class="form-group" style="background:rgba(0, 255, 157, 0.05); border:1px solid rgba(0, 255, 157, 0.25); border-radius:var(--radius); padding:10px 12px;">
+            <label for="editBillAmount" style="color:var(--neon-green); font-weight:700; display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span>TOTAL PAYABLE AMOUNT (RS.)</span>
+              <span id="editBillTotalFormula" style="font-family:var(--font-mono); font-size:11px; font-weight:normal; color:#94a3b8;">Base + Addl</span>
+            </label>
+            <input type="number" id="editBillAmount" class="form-control" placeholder="Final amount (Rs.)" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="border-color:var(--neon-green); font-weight:700; color:var(--neon-green);">
           </div>
 
           <div class="form-group">
@@ -871,11 +927,11 @@
             <div class="form-group">
               <label for="hofTier">TIER / HONORS BADGE</label>
               <select id="hofTier" class="form-control">
-                <option value="GRAND CHAMPION">GRAND CHAMPION</option>
-                <option value="PLATINUM ELITE">PLATINUM ELITE</option>
-                <option value="GOLD CONTENDER">GOLD CONTENDER</option>
-                <option value="DIAMOND SQUAD">DIAMOND SQUAD</option>
-                <option value="PRO GAMER">PRO GAMER</option>
+                <option value="LV 5: INFINITY">LV 5: INFINITY (1000+ PTS)</option>
+                <option value="LV 4: ELITE">LV 4: ELITE (500 - 999 PTS)</option>
+                <option value="LV 3: POWER">LV 3: POWER (250 - 499 PTS)</option>
+                <option value="LV 2: RISE">LV 2: RISE (100 - 249 PTS)</option>
+                <option value="LV 1: IGNITE">LV 1: IGNITE (0 - 99 PTS)</option>
               </select>
             </div>
           </div>
@@ -896,7 +952,7 @@
               <label for="hofLoyaltyPoints" style="color:#fbbf24; font-weight:700;">LOYALTY POINTS (PTS)</label>
               <input type="number" id="hofLoyaltyPoints" class="form-control" placeholder="e.g. 1850" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="border-color:#f59e0b; color:#fbbf24; font-weight:700;">
               <small style="display:block; font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:3px;">
-                Calculated at 100 PTS / hour. Edit manually when rewards are redeemed.
+                Official tariff: 1 Hour Play = 10 Points. Edit manually when rewards are redeemed or during 3-month cycle.
               </small>
             </div>
             <div class="form-group">
@@ -962,9 +1018,11 @@
           <div style="margin-bottom:14px;">
             <label style="display:block; font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.5px;">QUICK REWARD PRESETS:</label>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(200, 'Redeemed Free Soft Drink / Snack')">200 PTS (Snack)</button>
-              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(500, 'Redeemed 30-Min Free Gaming Session')">500 PTS (30 Min)</button>
-              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(1000, 'Redeemed 1-Hour Free Gaming Session')">1000 PTS (1 Hour)</button>
+              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(100, 'Redeemed 1/2-Hour Free Playtime (100 PTS)')">100 PTS (1/2 Hr Free)</button>
+              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(150, 'Redeemed 1-Hour Free Playtime (150 PTS)')">150 PTS (1 Hr Free)</button>
+              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(200, 'Redeemed 1.5-Hours Free Playtime (200 PTS)')">200 PTS (1.5 Hr Free)</button>
+              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(250, 'Redeemed 2-Hours Free Playtime (250 PTS)')">250 PTS (2 Hr Free)</button>
+              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(100, '3-Month Rank Cycle Quarterly Deduction (100 PTS)')">100 PTS (Quarterly Cycle)</button>
             </div>
           </div>
 
