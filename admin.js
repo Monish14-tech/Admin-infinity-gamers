@@ -1331,6 +1331,8 @@ async function loadLeaderboard() {
       else if (p.tier === "GOLD CONTENDER") tierColor = "#cd7f32";
       else if (p.tier === "DIAMOND SQUAD") tierColor = "#00d4ff";
 
+      const points = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 100);
+
       return `
         <tr>
           <td><strong style="font-family:var(--font-heading); color:${idx === 0 ? '#ffd700' : (idx === 1 ? '#e5e4e2' : (idx === 2 ? '#cd7f32' : '#fff'))}">#${p.rank || (idx + 1)}</strong></td>
@@ -1338,6 +1340,11 @@ async function loadLeaderboard() {
           <td><strong style="color:#fff;">${escapeHtml(p.customerName)}</strong></td>
           <td><span style="font-family:var(--font-mono); font-size:12px;">${escapeHtml(p.phone || '-')}</span></td>
           <td><span style="font-family:var(--font-mono); font-weight:700; color:var(--neon-blue);">${p.totalHours || 0} HRS</span></td>
+          <td>
+            <span style="font-family:var(--font-mono); font-weight:700; color:#fbbf24; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.35); padding:2px 8px; border-radius:3px; display:inline-flex; align-items:center; gap:4px;">
+              ★ ${points.toLocaleString()} PTS
+            </span>
+          </td>
           <td><span style="font-family:var(--font-mono);">${p.sessionCount || 1}</span></td>
           <td><span style="color:#e2e8f0;">${escapeHtml(p.favoriteGame || 'FC 26')}</span></td>
           <td>
@@ -1346,12 +1353,15 @@ async function loadLeaderboard() {
             </span>
           </td>
           <td>
-            <div style="display:flex; gap:6px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
               <button type="button" class="btn-secondary" onclick="moveHallOfFameRank('${p.id}', -1)" title="Move Rank Up" style="padding:2px 7px; font-size:11px;">
                 &uarr;
               </button>
               <button type="button" class="btn-secondary" onclick="moveHallOfFameRank('${p.id}', 1)" title="Move Rank Down" style="padding:2px 7px; font-size:11px;">
                 &darr;
+              </button>
+              <button type="button" class="btn-secondary" onclick="openRedeemPointsModal('${p.id}')" title="Redeem reward or edit loyalty points" style="padding:3px 8px; font-size:10px; border-color:#f59e0b; color:#fbbf24;">
+                EDIT PTS
               </button>
               <button type="button" class="btn-secondary" onclick="openEditHallOfFameModal('${p.id}')" style="padding:3px 8px; font-size:10px;">
                 EDIT
@@ -1365,9 +1375,17 @@ async function loadLeaderboard() {
       `;
     }).join("");
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:32px; color:#ef4444;">Error loading Hall of Fame: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:32px; color:#ef4444;">Error loading Hall of Fame: ${err.message}</td></tr>`;
   }
 }
+
+window.handleHofHoursChange = function() {
+  const hours = Number(document.getElementById("hofTotalHours")?.value) || 0;
+  const ptsInput = document.getElementById("hofLoyaltyPoints");
+  if (ptsInput) {
+    ptsInput.value = Math.round(hours * 100);
+  }
+};
 
 window.openAddHallOfFameModal = function(prefillData = null) {
   const modal = document.getElementById("modalHallOfFamePlayer");
@@ -1399,13 +1417,18 @@ window.openAddHallOfFameModal = function(prefillData = null) {
   const nextRank = currentHallOfFame.length + 1;
   document.getElementById("hofRank").value = nextRank;
   document.getElementById("hofTotalHours").value = "5.0";
+  document.getElementById("hofLoyaltyPoints").value = "500";
+  document.getElementById("hofSessionCount").value = "1";
 
   if (prefillData) {
     if (prefillData.customerName) document.getElementById("hofCustomerName").value = prefillData.customerName;
     if (prefillData.gamerTag) document.getElementById("hofGamerTag").value = prefillData.gamerTag;
     if (prefillData.phone) document.getElementById("hofPhone").value = prefillData.phone;
     if (prefillData.favoriteGame) document.getElementById("hofFavoriteGame").value = prefillData.favoriteGame;
-    if (prefillData.totalHours) document.getElementById("hofTotalHours").value = prefillData.totalHours;
+    if (prefillData.totalHours) {
+      document.getElementById("hofTotalHours").value = prefillData.totalHours;
+      document.getElementById("hofLoyaltyPoints").value = Math.round(Number(prefillData.totalHours) * 100);
+    }
   }
 
   if (modal) modal.classList.add("open");
@@ -1414,6 +1437,8 @@ window.openAddHallOfFameModal = function(prefillData = null) {
 window.openEditHallOfFameModal = function(id) {
   const p = currentHallOfFame.find(x => x.id === id);
   if (!p) return;
+
+  const currentPts = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 100);
 
   document.getElementById("hofPlayerId").value = p.id;
   document.getElementById("hofModalTitle").textContent = "EDIT HALL OF FAME ENTRY";
@@ -1424,6 +1449,8 @@ window.openEditHallOfFameModal = function(id) {
   document.getElementById("hofTier").value = p.tier || "GRAND CHAMPION";
   document.getElementById("hofFavoriteGame").value = p.favoriteGame || "EA Sports FC 26";
   document.getElementById("hofTotalHours").value = p.totalHours || 1.0;
+  document.getElementById("hofLoyaltyPoints").value = currentPts;
+  document.getElementById("hofSessionCount").value = p.sessionCount || 1;
   document.getElementById("hofNotes").value = p.notes || "";
 
   const modal = document.getElementById("modalHallOfFamePlayer");
@@ -1450,6 +1477,8 @@ window.handleHofQuickPickChange = function() {
     const totalMins = matched.reduce((acc, s) => acc + (Number(s.durationMinutes) || 0), 0);
     const hours = Math.max(1, Number((totalMins / 60).toFixed(1)));
     document.getElementById("hofTotalHours").value = hours;
+    document.getElementById("hofLoyaltyPoints").value = Math.round(hours * 100);
+    document.getElementById("hofSessionCount").value = matched.length;
 
     let tier = "GOLD CONTENDER";
     if (hours >= 15) tier = "GRAND CHAMPION";
@@ -1468,6 +1497,8 @@ window.handleSaveHallOfFamePlayer = async function(e) {
   const tier = document.getElementById("hofTier")?.value || "GOLD CONTENDER";
   const favoriteGame = document.getElementById("hofFavoriteGame")?.value.trim() || "EA Sports FC 26";
   const totalHours = Number(document.getElementById("hofTotalHours")?.value) || 1.0;
+  const loyaltyPoints = Number(document.getElementById("hofLoyaltyPoints")?.value) || Math.round(totalHours * 100);
+  const sessionCount = Number(document.getElementById("hofSessionCount")?.value) || 1;
   const notes = document.getElementById("hofNotes")?.value.trim() || "";
 
   if (!gamerTag) {
@@ -1475,7 +1506,7 @@ window.handleSaveHallOfFamePlayer = async function(e) {
     return;
   }
 
-  const payload = { rank, gamerTag, customerName, phone, tier, favoriteGame, totalHours, notes };
+  const payload = { rank, gamerTag, customerName, phone, tier, favoriteGame, totalHours, loyaltyPoints, sessionCount, notes };
 
   try {
     let res;
@@ -1504,6 +1535,128 @@ window.handleSaveHallOfFamePlayer = async function(e) {
 
     showToast(`Player @${gamerTag} saved to Hall of Fame!`);
     closeHallOfFameModal();
+    loadLeaderboard();
+  } catch (err) {
+    showToast("Error: " + err.message);
+  }
+};
+
+// 15. REDEEM REWARDS & EDIT LOYALTY POINTS MODAL
+let activeRedeemPlayer = null;
+
+window.openRedeemPointsModal = function(id) {
+  const p = currentHallOfFame.find(x => x.id === id);
+  if (!p) {
+    showToast("Player not found in Hall of Fame.");
+    return;
+  }
+
+  activeRedeemPlayer = p;
+  const currentPts = p.loyaltyPoints !== undefined ? Number(p.loyaltyPoints) : Math.round((Number(p.totalHours) || 0) * 100);
+
+  document.getElementById("redeemPlayerId").value = p.id;
+  document.getElementById("redeemPlayerName").textContent = p.customerName || "Player";
+  document.getElementById("redeemGamerTag").textContent = `@${p.gamerTag || 'GAMER'}`;
+  document.getElementById("redeemCurrentBalance").textContent = `${currentPts.toLocaleString()} PTS`;
+  document.getElementById("redeemActionType").value = "deduct";
+  document.getElementById("redeemPointsAmount").value = "";
+  document.getElementById("redeemNote").value = "";
+  document.getElementById("lblRedeemPoints").textContent = "POINTS TO DEDUCT (REWARD REDEEMED)";
+  document.getElementById("redeemProjectedBalance").textContent = `${currentPts.toLocaleString()} PTS`;
+
+  const modal = document.getElementById("modalRedeemPoints");
+  if (modal) modal.classList.add("open");
+};
+
+window.closeRedeemPointsModal = function() {
+  const modal = document.getElementById("modalRedeemPoints");
+  if (modal) modal.classList.remove("open");
+  activeRedeemPlayer = null;
+};
+
+window.updateRedeemCalculation = function() {
+  if (!activeRedeemPlayer) return;
+  const currentPts = activeRedeemPlayer.loyaltyPoints !== undefined 
+    ? Number(activeRedeemPlayer.loyaltyPoints) 
+    : Math.round((Number(activeRedeemPlayer.totalHours) || 0) * 100);
+
+  const action = document.getElementById("redeemActionType")?.value || "deduct";
+  const amount = Number(document.getElementById("redeemPointsAmount")?.value) || 0;
+  const lbl = document.getElementById("lblRedeemPoints");
+  let projected = currentPts;
+
+  if (action === "deduct") {
+    if (lbl) lbl.textContent = "POINTS TO DEDUCT (REWARD REDEEMED)";
+    projected = Math.max(0, currentPts - amount);
+  } else if (action === "set") {
+    if (lbl) lbl.textContent = "EXACT NEW BALANCE (PTS)";
+    projected = Math.max(0, amount);
+  } else if (action === "add") {
+    if (lbl) lbl.textContent = "BONUS POINTS TO ADD";
+    projected = currentPts + Math.max(0, amount);
+  }
+
+  const projEl = document.getElementById("redeemProjectedBalance");
+  if (projEl) {
+    projEl.textContent = `${projected.toLocaleString()} PTS`;
+  }
+};
+
+window.applyRedeemPreset = function(pts, reason) {
+  const actionSelect = document.getElementById("redeemActionType");
+  if (actionSelect) actionSelect.value = "deduct";
+  const ptsInput = document.getElementById("redeemPointsAmount");
+  if (ptsInput) ptsInput.value = pts;
+  const noteInput = document.getElementById("redeemNote");
+  if (noteInput) noteInput.value = reason;
+  updateRedeemCalculation();
+};
+
+window.handleRedeemPointsSubmit = async function(e) {
+  e.preventDefault();
+  if (!activeRedeemPlayer) return;
+
+  const id = document.getElementById("redeemPlayerId")?.value;
+  const action = document.getElementById("redeemActionType")?.value || "deduct";
+  const amount = Number(document.getElementById("redeemPointsAmount")?.value) || 0;
+  const reason = document.getElementById("redeemNote")?.value.trim() || "";
+
+  const currentPts = activeRedeemPlayer.loyaltyPoints !== undefined 
+    ? Number(activeRedeemPlayer.loyaltyPoints) 
+    : Math.round((Number(activeRedeemPlayer.totalHours) || 0) * 100);
+
+  let newPoints = currentPts;
+  if (action === "deduct") {
+    newPoints = Math.max(0, currentPts - amount);
+  } else if (action === "set") {
+    newPoints = Math.max(0, amount);
+  } else if (action === "add") {
+    newPoints = currentPts + Math.max(0, amount);
+  }
+
+  let noteUpdate = activeRedeemPlayer.notes || "";
+  if (reason) {
+    noteUpdate = (noteUpdate ? noteUpdate + " | " : "") + reason;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/hall-of-fame/${id}?_t=${Date.now()}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${adminToken}`
+      },
+      body: JSON.stringify({
+        loyaltyPoints: newPoints,
+        notes: noteUpdate
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to update points.");
+
+    showToast(`Loyalty points updated! New balance: ${newPoints.toLocaleString()} PTS.`);
+    closeRedeemPointsModal();
     loadLeaderboard();
   } catch (err) {
     showToast("Error: " + err.message);

@@ -277,6 +277,7 @@
                 <th>CUSTOMER NAME</th>
                 <th>PHONE</th>
                 <th>VERIFIED HOURS</th>
+                <th>LOYALTY POINTS</th>
                 <th>SESSIONS</th>
                 <th>PRIMARY TITLE</th>
                 <th>TIER / BADGE</th>
@@ -285,7 +286,7 @@
             </thead>
             <tbody id="leaderboardTableBody">
               <tr>
-                <td colspan="9" style="text-align:center; padding:32px; color:var(--text-muted);">Loading Hall of Fame...</td>
+                <td colspan="10" style="text-align:center; padding:32px; color:var(--text-muted);">Loading Hall of Fame...</td>
               </tr>
             </tbody>
           </table>
@@ -865,7 +866,21 @@
             </div>
             <div class="form-group">
               <label for="hofTotalHours">VERIFIED HOURS</label>
-              <input type="number" id="hofTotalHours" class="form-control" step="0.1" min="0" placeholder="e.g. 18.5" required>
+              <input type="number" id="hofTotalHours" class="form-control" step="0.1" min="0" placeholder="e.g. 18.5" required oninput="handleHofHoursChange()">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="hofLoyaltyPoints" style="color:#fbbf24; font-weight:700;">LOYALTY POINTS (PTS)</label>
+              <input type="number" id="hofLoyaltyPoints" class="form-control" placeholder="e.g. 1850" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" style="border-color:#f59e0b; color:#fbbf24; font-weight:700;">
+              <small style="display:block; font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-top:3px;">
+                Calculated at 100 PTS / hour. Edit manually when rewards are redeemed.
+              </small>
+            </div>
+            <div class="form-group">
+              <label for="hofSessionCount">TOTAL SESSIONS</label>
+              <input type="number" id="hofSessionCount" class="form-control" min="1" step="1" placeholder="e.g. 14">
             </div>
           </div>
 
@@ -878,6 +893,74 @@
         <div class="modal-footer">
           <button type="button" class="btn-secondary" onclick="closeHallOfFameModal()">CANCEL</button>
           <button type="submit" class="btn-primary" id="btnSubmitHof">SAVE TO HALL OF FAME</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: REDEEM REWARD / EDIT LOYALTY POINTS
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalRedeemPoints">
+    <div class="modal-dialog" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 style="color:#fbbf24;">REDEEM REWARD / EDIT LOYALTY POINTS</h3>
+        <button type="button" class="modal-close-btn" onclick="closeRedeemPointsModal()">&times;</button>
+      </div>
+
+      <form id="redeemPointsForm" onsubmit="handleRedeemPointsSubmit(event)">
+        <input type="hidden" id="redeemPlayerId">
+        <div class="modal-body">
+          <div style="background:rgba(245, 158, 11, 0.08); border:1px solid rgba(245, 158, 11, 0.3); border-radius:var(--radius); padding:14px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:#fbbf24; letter-spacing:1px; text-transform:uppercase;">HALL OF FAME MEMBER</span>
+              <strong style="display:block; font-size:16px; color:#fff; margin-top:2px;" id="redeemPlayerName">--</strong>
+              <span style="font-family:var(--font-mono); font-size:12px; color:var(--neon-pink);" id="redeemGamerTag">@--</span>
+            </div>
+            <div style="text-align:right;">
+              <span style="font-family:var(--font-mono); font-size:10px; color:#cbd5e1;">CURRENT BALANCE</span>
+              <div style="font-family:var(--font-mono); font-size:20px; font-weight:800; color:#fbbf24;" id="redeemCurrentBalance">0 PTS</div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="redeemActionType">POINTS ACTION</label>
+            <select id="redeemActionType" class="form-control" onchange="updateRedeemCalculation()">
+              <option value="deduct">DEDUCT POINTS (REWARD REDEEMED)</option>
+              <option value="set">SET EXACT NEW BALANCE</option>
+              <option value="add">ADD BONUS LOYALTY POINTS</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="redeemPointsAmount" id="lblRedeemPoints">POINTS TO DEDUCT</label>
+            <input type="number" id="redeemPointsAmount" class="form-control" placeholder="Enter points amount" min="0" step="1" inputmode="numeric" required oninput="this.value = this.value.replace(/[^0-9]/g, ''); updateRedeemCalculation();">
+          </div>
+
+          <!-- QUICK REWARD REDEEM PRESETS -->
+          <div style="margin-bottom:14px;">
+            <label style="display:block; font-family:var(--font-mono); font-size:10px; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.5px;">QUICK REWARD PRESETS:</label>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(200, 'Redeemed Free Soft Drink / Snack')">200 PTS (Snack)</button>
+              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(500, 'Redeemed 30-Min Free Gaming Session')">500 PTS (30 Min)</button>
+              <button type="button" class="table-filter-btn" onclick="applyRedeemPreset(1000, 'Redeemed 1-Hour Free Gaming Session')">1000 PTS (1 Hour)</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="redeemNote">REASON / REWARD DETAILS</label>
+            <input type="text" id="redeemNote" class="form-control" placeholder="e.g. Redeemed 1-Hour Free PS5 Gaming Session">
+          </div>
+
+          <div style="background:rgba(0,0,0,0.3); border:1px solid var(--border-line); border-radius:var(--radius); padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-family:var(--font-mono); font-size:12px; color:#cbd5e1;">NEW BALANCE AFTER UPDATE:</span>
+            <strong style="font-family:var(--font-mono); font-size:17px; color:#10b981;" id="redeemProjectedBalance">0 PTS</strong>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeRedeemPointsModal()">CANCEL</button>
+          <button type="submit" class="btn-primary" style="background:#f59e0b; color:#000; border-color:#f59e0b;">SAVE POINTS BALANCE</button>
         </div>
       </form>
     </div>

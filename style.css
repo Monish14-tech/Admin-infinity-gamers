@@ -810,6 +810,7 @@ textarea.form-control {
   #modalCheckout,
   #modalEditBill,
   #modalHallOfFamePlayer,
+  #modalRedeemPoints,
   #modalApiSettings {
     display: none !important;
   }
