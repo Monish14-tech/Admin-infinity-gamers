@@ -1118,6 +1118,7 @@ window.openReceiptModal = function(sessionId) {
     : (session.game || "FC 26");
 
   const rateVal = session.rateBasis || session.baseAmount || session.amount || 148;
+  const cleanRate = String(rateVal).replace(/\s*\/\s*(?:hour|hr)/gi, '').replace(/^rs\.?\s*/i, '').trim();
   const addlCharges = Number(session.additionalCharges) || 0;
   const baseAmt = session.baseAmount !== undefined ? Number(session.baseAmount) : (Number(session.amount || 148) - addlCharges);
 
@@ -1133,7 +1134,7 @@ window.openReceiptModal = function(sessionId) {
     outTime: session.outTime ? formatDateTime(session.outTime) : "IN PROGRESS",
     duration: `${dur} MIN (${hours} HRS)`,
     durationMinutes: dur,
-    rateBasis: `Rs. ${rateVal}`,
+    rateBasis: `Rs. ${cleanRate}`,
     baseAmount: baseAmt,
     additionalCharges: addlCharges,
     additionalNote: session.additionalNote || "",
@@ -1174,11 +1175,36 @@ window.openReceiptFromCheckout = function() {
   const session = allSessions.find(s => s.id === sessionId);
   if (!session) return;
 
-  const customAmount = Number(document.getElementById("checkoutFinalAmount")?.value) || session.amount;
+  const baseAmt = Number(document.getElementById("checkoutBaseAmount")?.value) || 0;
+  const addlCharges = Number(document.getElementById("checkoutAdditionalCharges")?.value) || 0;
+  const addlNote = document.getElementById("checkoutAdditionalNote")?.value.trim() || "";
+  const customAmount = Number(document.getElementById("checkoutFinalAmount")?.value) || (baseAmt + addlCharges);
+
   openReceiptModal(sessionId);
-  // Override amount with whatever custom value is currently in the checkout input
+
+  // Sync live checkout breakdown to active receipt
+  if (activeReceiptData) {
+    activeReceiptData.baseAmount = baseAmt;
+    activeReceiptData.additionalCharges = addlCharges;
+    activeReceiptData.additionalNote = addlNote;
+    activeReceiptData.totalAmount = customAmount;
+  }
+
+  // Update additional charges line row
+  const addRow = document.getElementById("receiptAdditionalRow");
+  if (addRow) {
+    if (addlCharges > 0) {
+      addRow.style.display = "flex";
+      const desc = addlNote ? ` (${addlNote})` : "";
+      document.getElementById("receiptAdditionalLabel").textContent = `Additional Charges${desc}:`;
+      document.getElementById("receiptAdditionalAmount").textContent = `+ Rs. ${addlCharges}`;
+    } else {
+      addRow.style.display = "none";
+    }
+  }
+
+  // Override total amount
   document.getElementById("receiptTotalAmount").textContent = `Rs. ${customAmount}`;
-  if (activeReceiptData) activeReceiptData.totalAmount = customAmount;
 };
 
 window.closeReceiptModal = function() {
@@ -1325,6 +1351,27 @@ window.recalculateEditBillTotal = function() {
   const base = Math.max(50, Math.ceil((dur / 60) * rate));
   const baseInput = document.getElementById("editBillBaseAmount");
   if (baseInput) baseInput.value = base;
+  updateEditBillTotal();
+};
+
+window.addEditBillChargePreset = function(amount, desc) {
+  const addlInput = document.getElementById("editBillAdditionalCharges");
+  const current = Number(addlInput?.value) || 0;
+  if (addlInput) addlInput.value = current + amount;
+
+  const noteInput = document.getElementById("editBillAdditionalNote");
+  if (noteInput) {
+    const existing = noteInput.value.trim();
+    noteInput.value = existing ? `${existing}, ${desc}` : desc;
+  }
+  updateEditBillTotal();
+};
+
+window.clearEditBillCharges = function() {
+  const addlInput = document.getElementById("editBillAdditionalCharges");
+  if (addlInput) addlInput.value = 0;
+  const noteInput = document.getElementById("editBillAdditionalNote");
+  if (noteInput) noteInput.value = "";
   updateEditBillTotal();
 };
 

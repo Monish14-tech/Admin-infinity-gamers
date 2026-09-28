@@ -451,6 +451,9 @@
                 <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 198">₹198 (Wkend 1h)</button>
                 <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 288">₹288 (Wkday 2h)</button>
                 <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 348">₹348 (Wkend 2h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 398">₹398 (3h+1h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 698">₹698 (5h+1h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('newHourlyRate').value = 1088">₹1088 (Special)</button>
               </div>
             </div>
             <div class="form-group">
@@ -523,6 +526,15 @@
             <div class="form-group">
               <label for="editHourlyRate">RATE BASIS (RS.)</label>
               <input type="number" id="editHourlyRate" class="form-control" placeholder="Enter rate basis (numbers only)" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+              <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:4px;">
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editHourlyRate').value = 148">₹148 (Wkday 1h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editHourlyRate').value = 198">₹198 (Wkend 1h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editHourlyRate').value = 288">₹288 (Wkday 2h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editHourlyRate').value = 348">₹348 (Wkend 2h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editHourlyRate').value = 398">₹398 (3h+1h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editHourlyRate').value = 698">₹698 (5h+1h)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editHourlyRate').value = 1088">₹1088 (Special)</button>
+              </div>
             </div>
             <div class="form-group">
               <label for="editSessionNotes">NOTES / PASS TYPE</label>
@@ -838,6 +850,15 @@
             <div class="form-group" style="margin-bottom:0;">
               <label for="editBillRateBasis">RATE BASIS (RS.)</label>
               <input type="number" id="editBillRateBasis" class="form-control" placeholder="Rate basis" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, ''); recalculateEditBillTotal();">
+              <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:4px;">
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editBillRateBasis').value = 148; recalculateEditBillTotal();">₹148</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editBillRateBasis').value = 198; recalculateEditBillTotal();">₹198</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editBillRateBasis').value = 288; recalculateEditBillTotal();">₹288</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editBillRateBasis').value = 348; recalculateEditBillTotal();">₹348</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editBillRateBasis').value = 398; recalculateEditBillTotal();">₹398</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editBillRateBasis').value = 698; recalculateEditBillTotal();">₹698</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="document.getElementById('editBillRateBasis').value = 1088; recalculateEditBillTotal();">₹1088</button>
+              </div>
             </div>
           </div>
 
@@ -849,6 +870,12 @@
             <div class="form-group" style="margin-bottom:0;">
               <label for="editBillAdditionalCharges">ADDITIONAL CHARGES (RS.)</label>
               <input type="number" id="editBillAdditionalCharges" class="form-control" placeholder="0" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, ''); updateEditBillTotal();">
+              <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:4px;">
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="addEditBillChargePreset(50, 'Extra Controller (+₹50)')">+₹50 Ctrl</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="addEditBillChargePreset(100, '2x Extra Controllers (+₹100)')">+₹100 (2 Ctrl)</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="addEditBillChargePreset(99, 'Lifetime Membership (+₹99)')">+₹99 Pass</button>
+                <button type="button" class="table-filter-btn" style="padding:2px 6px; font-size:10px;" onclick="clearEditBillCharges()">Clear</button>
+              </div>
             </div>
           </div>
 
