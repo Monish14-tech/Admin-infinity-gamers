@@ -41,16 +41,17 @@ const server = createServer((request, response) => {
 
   const ext = path.extname(filePath).toLowerCase();
   const isDynamic = ext === ".html" || ext === ".css" || ext === ".js";
-  response.writeHead(200, {
+  const headers = {
     "Content-Type": contentTypes[ext] || "application/octet-stream",
     "Cache-Control": isDynamic ? "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" : "max-age=3600",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY"
-  });
+  };
   if (isDynamic) {
-    response.setHeader("Pragma", "no-cache");
-    response.setHeader("Expires", "0");
+    headers["Pragma"] = "no-cache";
+    headers["Expires"] = "0";
   }
+  response.writeHead(200, headers);
   response.end(readFileSync(filePath));
 });
 
