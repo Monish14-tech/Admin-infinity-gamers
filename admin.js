@@ -298,10 +298,16 @@ function updateStationCard(stationName, num) {
   const elapsedEl = document.getElementById(`elapsedStation${num}`);
   const gameEl = document.getElementById(`gameStation${num}`);
   const actionDiv = document.getElementById(`actionBtnStation${num}`);
+  const headerEditBtn = document.getElementById(`btnHeaderEditStation${num}`);
 
   const active = allSessions.find(s => s.station === stationName && s.status === "active");
 
   if (active) {
+    if (headerEditBtn) {
+      headerEditBtn.style.display = "inline-flex";
+      headerEditBtn.onclick = () => window.editStationSession(num);
+    }
+
     const isPaused = Boolean(active.isPaused);
     if (card) card.className = isPaused ? "station-live-card active-session paused" : "station-live-card active-session";
     if (badge) {
@@ -350,7 +356,7 @@ function updateStationCard(stationName, num) {
               </button>
             `}
             <button type="button" class="btn-subaction" onclick="openEditSessionModal('${active.id}')" title="Edit player or game details">
-              EDIT
+              EDIT SESSION
             </button>
             <button type="button" class="btn-subaction" onclick="openSwitchStationModal('${active.id}')" title="Switch station console or games">
               SWITCH
@@ -360,6 +366,7 @@ function updateStationCard(stationName, num) {
       `;
     }
   } else {
+    if (headerEditBtn) headerEditBtn.style.display = "none";
     if (card) card.className = "station-live-card";
     if (badge) {
       badge.className = "station-badge vacant";
@@ -381,6 +388,16 @@ function updateStationCard(stationName, num) {
     }
   }
 }
+
+window.editStationSession = function(num) {
+  const stationName = `PS5 Station ${num}`;
+  const active = allSessions.find(s => s.station === stationName && s.status === "active");
+  if (!active) {
+    showToast(`No active session on PS5 Station ${num} to edit.`);
+    return;
+  }
+  openEditSessionModal(active.id);
+};
 
 // REAL-TIME RUNNING TIMERS
 function updateLiveStationTimers() {
@@ -503,8 +520,11 @@ function renderSessionsTable() {
                 SWITCH
               </button>
             ` : `
-              <button type="button" class="btn-secondary" onclick="openReceiptModal('${s.id}')" style="padding:4px 9px; min-height:26px; font-size:10px; border-color:var(--neon-blue); color:var(--neon-blue);">
+              <button type="button" class="btn-secondary" onclick="openReceiptModal('${s.id}')" style="padding:4px 9px; min-height:26px; font-size:10px; border-color:var(--neon-blue); color:var(--neon-blue);" title="View & Print Bill Receipt">
                 RECEIPT (PDF)
+              </button>
+              <button type="button" class="btn-secondary" onclick="openEditBillModal('${s.id}')" style="padding:4px 9px; min-height:26px; font-size:10px; border-color:#10b981; color:#6ee7b7;" title="Edit bill details, amount, duration, or notes">
+                EDIT BILL
               </button>
               <button type="button" class="btn-secondary" onclick="featureSessionInHallOfFame('${s.id}')" style="padding:4px 9px; min-height:26px; font-size:10px; border-color:var(--neon-pink); color:var(--neon-pink-light);">
                 + HALL OF FAME
@@ -757,7 +777,7 @@ window.handleEditSessionSubmit = async function(e) {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${adminToken}`
       },
-      body: JSON.stringify({ customerName, phone, gamerTag, amount, game, notes })
+      body: JSON.stringify({ customerName, phone, gamerTag, amount, rateBasis: amount, game, notes })
     });
 
     const data = await res.json();
@@ -920,6 +940,7 @@ window.openReceiptModal = function(sessionId) {
     : (session.game || "FC 26");
 
   activeReceiptData = {
+    sessionId: session.id,
     receiptId: "IG-" + (session.id ? session.id.slice(-6).toUpperCase() : Math.floor(100000 + Math.random() * 900000)),
     customerName: session.customerName || "Customer",
     gamerTag: session.gamerTag || "PLAYER",
@@ -929,7 +950,8 @@ window.openReceiptModal = function(sessionId) {
     inTime: formatDateTime(session.inTime),
     outTime: session.outTime ? formatDateTime(session.outTime) : "IN PROGRESS",
     duration: `${dur} MIN (${hours} HRS)`,
-    rateBasis: `Rs. ${session.amount || 150} / Hour`,
+    durationMinutes: dur,
+    rateBasis: `Rs. ${session.rateBasis || session.amount || 150} / Hour`,
     totalAmount: session.amount || 150
   };
 
@@ -1011,6 +1033,123 @@ Status: PAID`;
   }).catch(() => {
     showToast("Failed to copy receipt text.");
   });
+};
+
+// 12. EDIT BILL & RECEIPT DETAILS
+window.openEditBillModal = function(sessionId) {
+  const targetId = sessionId || (activeReceiptData ? activeReceiptData.sessionId : null);
+  if (!targetId) {
+    showToast("Please select a session or bill to edit.");
+    return;
+  }
+
+  const session = allSessions.find(s => s.id === targetId);
+  if (!session) {
+    showToast("Bill session record not found.");
+    return;
+  }
+
+  const billHeader = document.getElementById("editBillHeaderTitle");
+  if (billHeader) {
+    billHeader.textContent = "BILL #" + (session.id ? session.id.slice(-6).toUpperCase() : "RECORD");
+  }
+
+  const badgeEl = document.getElementById("editBillStatusBadge");
+  if (badgeEl) {
+    const isCompleted = session.status === "completed";
+    badgeEl.textContent = isCompleted ? "COMPLETED" : "ACTIVE";
+    badgeEl.className = isCompleted ? "station-badge vacant" : "station-badge occupied";
+  }
+
+  document.getElementById("editBillSessionId").value = session.id;
+  document.getElementById("editBillCustomerName").value = session.customerName || "";
+  document.getElementById("editBillGamerTag").value = session.gamerTag || "";
+  document.getElementById("editBillPhone").value = session.phone || "";
+  
+  const stationSelect = document.getElementById("editBillStation");
+  if (stationSelect) stationSelect.value = session.station || "PS5 Station 1";
+
+  const gamesVal = (Array.isArray(session.gamesPlayed) && session.gamesPlayed.length > 0)
+    ? session.gamesPlayed.join(", ")
+    : (session.game || "EA Sports FC 26");
+  document.getElementById("editBillGames").value = gamesVal;
+
+  const durationVal = session.durationMinutes || calculateElapsedMinutes(session);
+  document.getElementById("editBillDuration").value = durationVal;
+  document.getElementById("editBillRateBasis").value = session.rateBasis || session.amount || 150;
+  document.getElementById("editBillAmount").value = session.amount || 0;
+  document.getElementById("editBillNotes").value = session.notes || "";
+
+  const modal = document.getElementById("modalEditBill");
+  if (modal) modal.classList.add("open");
+};
+
+window.closeEditBillModal = function() {
+  const modal = document.getElementById("modalEditBill");
+  if (modal) modal.classList.remove("open");
+};
+
+window.handleEditBillSubmit = async function(e) {
+  e.preventDefault();
+  const id = document.getElementById("editBillSessionId").value;
+  const customerName = document.getElementById("editBillCustomerName").value.trim();
+  const gamerTag = document.getElementById("editBillGamerTag").value.replace(/[^a-zA-Z\s]/g, "").trim();
+  const phone = document.getElementById("editBillPhone").value.trim();
+  const station = document.getElementById("editBillStation").value;
+  const gamesRaw = document.getElementById("editBillGames").value.trim();
+  const durationMinutes = Number(document.getElementById("editBillDuration").value) || 1;
+  const rateBasis = Number(document.getElementById("editBillRateBasis").value) || 150;
+  const amount = Number(document.getElementById("editBillAmount").value) || 0;
+  const notes = document.getElementById("editBillNotes").value.trim();
+
+  const gamesArray = gamesRaw ? gamesRaw.split(",").map(g => g.trim()).filter(Boolean) : ["EA Sports FC 26"];
+  const primaryGame = gamesArray[0] || "EA Sports FC 26";
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/sessions/${id}?_t=${Date.now()}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${adminToken}`
+      },
+      body: JSON.stringify({
+        customerName,
+        gamerTag,
+        phone,
+        station,
+        game: primaryGame,
+        gamesPlayed: gamesArray,
+        durationMinutes,
+        rateBasis,
+        amount,
+        notes
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to update bill details.");
+
+    // Update in local cache
+    const idx = allSessions.findIndex(s => s.id === id);
+    if (idx !== -1 && data.session) {
+      allSessions[idx] = data.session;
+    }
+
+    showToast("Bill updated successfully.");
+    closeEditBillModal();
+
+    // Re-render UI
+    renderSessionsTable();
+    updateStationOverview();
+
+    // If receipt modal was viewing this bill, refresh it in place!
+    const receiptModal = document.getElementById("modalReceiptPrint");
+    if (receiptModal && receiptModal.classList.contains("open")) {
+      openReceiptModal(id);
+    }
+  } catch (err) {
+    showToast("Error: " + err.message);
+  }
 };
 
 // 12. EXPORT HELPERS (PDF, CSV, JSON)

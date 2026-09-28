@@ -106,7 +106,12 @@
         <!-- STATION 1 -->
         <div class="station-live-card" id="cardStation1">
           <div class="station-card-top">
-            <span class="station-title">PS5 STATION 1</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="station-title">PS5 STATION 1</span>
+              <button type="button" id="btnHeaderEditStation1" class="btn-station-header-edit" onclick="editStationSession(1)" title="Edit Station 1 session details" style="display:none;">
+                EDIT
+              </button>
+            </div>
             <span class="station-badge vacant" id="badgeStation1">VACANT</span>
           </div>
           <div class="station-player-info" id="playerInfoStation1">
@@ -137,7 +142,12 @@
         <!-- STATION 2 -->
         <div class="station-live-card" id="cardStation2">
           <div class="station-card-top">
-            <span class="station-title">PS5 STATION 2</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="station-title">PS5 STATION 2</span>
+              <button type="button" id="btnHeaderEditStation2" class="btn-station-header-edit" onclick="editStationSession(2)" title="Edit Station 2 session details" style="display:none;">
+                EDIT
+              </button>
+            </div>
             <span class="station-badge vacant" id="badgeStation2">VACANT</span>
           </div>
           <div class="station-player-info" id="playerInfoStation2">
@@ -698,6 +708,9 @@
         <button type="button" class="btn-secondary" onclick="shareReceiptWhatsApp()">
           SHARE ON WHATSAPP
         </button>
+        <button type="button" class="btn-secondary" id="btnReceiptEditBill" onclick="openEditBillModal(activeReceiptData ? activeReceiptData.sessionId : null)" style="border-color:#10b981; color:#6ee7b7;">
+          EDIT BILL
+        </button>
         <button type="button" class="btn-secondary" onclick="copyReceiptText()">
           COPY TEXT
         </button>
@@ -705,6 +718,86 @@
           CLOSE
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODAL: EDIT BILL & RECEIPT DETAILS
+       ======================================================== -->
+  <div class="modal-backdrop" id="modalEditBill">
+    <div class="modal-dialog" style="max-width: 560px;">
+      <div class="modal-header">
+        <h3>EDIT BILL / RECEIPT</h3>
+        <button type="button" class="modal-close-btn" onclick="closeEditBillModal()">&times;</button>
+      </div>
+
+      <form id="editBillForm" onsubmit="handleEditBillSubmit(event)">
+        <input type="hidden" id="editBillSessionId">
+        <div class="modal-body">
+          <div style="background:rgba(255,255,255,0.03); border:1px solid var(--border-line); border-radius:var(--radius); padding:12px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <span style="font-family:var(--font-mono); font-size:10px; color:var(--neon-blue); letter-spacing:1px; display:block;">BILL RECORD</span>
+              <strong style="font-size:14px; color:#fff;" id="editBillHeaderTitle">BILL #--</strong>
+            </div>
+            <span id="editBillStatusBadge" class="station-badge occupied" style="font-size:10px;">COMPLETED</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="editBillCustomerName">CUSTOMER / TEAM NAME</label>
+              <input type="text" id="editBillCustomerName" class="form-control" placeholder="Enter customer name" required>
+            </div>
+            <div class="form-group">
+              <label for="editBillGamerTag">GAMER TAG (LETTERS ONLY)</label>
+              <input type="text" id="editBillGamerTag" class="form-control" placeholder="Enter gamer tag (letters only)" pattern="[A-Za-z\s]+" oninput="this.value = this.value.replace(/[^a-zA-Z\s]/g, '')">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label for="editBillPhone">PHONE NUMBER</label>
+              <input type="tel" id="editBillPhone" class="form-control" placeholder="Enter 10-digit mobile number">
+            </div>
+            <div class="form-group">
+              <label for="editBillStation">STATION</label>
+              <select id="editBillStation" class="form-control">
+                <option value="PS5 Station 1">PS5 Station 1</option>
+                <option value="PS5 Station 2">PS5 Station 2</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="editBillGames">GAME(S) PLAYED</label>
+            <input type="text" id="editBillGames" class="form-control" placeholder="e.g. EA Sports FC 26, Mortal Kombat 1">
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label for="editBillDuration">PLAYED (MIN)</label>
+              <input type="number" id="editBillDuration" class="form-control" placeholder="Duration (min)" min="1" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required>
+            </div>
+            <div class="form-group">
+              <label for="editBillRateBasis">RATE / HR (RS.)</label>
+              <input type="number" id="editBillRateBasis" class="form-control" placeholder="Hourly rate" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+            </div>
+            <div class="form-group">
+              <label for="editBillAmount" style="color:#10b981; font-weight:700;">PAYABLE (RS.)</label>
+              <input type="number" id="editBillAmount" class="form-control" placeholder="Final amount (Rs.)" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="border-color:#10b981; font-weight:700; color:#10b981;">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="editBillNotes">PAYMENT / BILL NOTES</label>
+            <input type="text" id="editBillNotes" class="form-control" placeholder="e.g. Paid UPI GPay, discount applied, pass verified">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeEditBillModal()">CANCEL</button>
+          <button type="submit" class="btn-primary" style="background:#10b981; color:#000; border-color:#10b981;">SAVE BILL CHANGES</button>
+        </div>
+      </form>
     </div>
   </div>
 

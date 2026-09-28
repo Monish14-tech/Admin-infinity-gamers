@@ -767,6 +767,29 @@ textarea.form-control {
   color: #000;
 }
 
+/* STATION HEADER QUICK EDIT BUTTON */
+.btn-station-header-edit {
+  background: rgba(0, 212, 255, 0.12);
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-blue);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-station-header-edit:hover {
+  background: var(--neon-blue);
+  color: #000;
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.4);
+}
+
 /* PRINT & PDF EXPORT RULES */
 @media print {
   body {
@@ -785,6 +808,7 @@ textarea.form-control {
   #modalEditSession,
   #modalSwitchStation,
   #modalCheckout,
+  #modalEditBill,
   #modalHallOfFamePlayer,
   #modalApiSettings {
     display: none !important;
