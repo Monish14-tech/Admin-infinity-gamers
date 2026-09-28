@@ -30,6 +30,7 @@ let pollInterval = null;
 let liveTimerInterval = null;
 let currentFilter = "all";
 let currentSearch = "";
+let currentDateFilter = ""; // ISO date string YYYY-MM-DD, empty = show all
 
 // 2. INITIALIZATION
 document.addEventListener("DOMContentLoaded", () => {
@@ -40,15 +41,32 @@ document.addEventListener("DOMContentLoaded", () => {
   // Set default API in modal input
   const apiInput = document.getElementById("apiUrlInput");
   if (apiInput) apiInput.value = API_BASE_URL;
+
+  // Initialize date filter to today
+  initSessionDateFilter();
 });
 
 // CLOCK
 function initClock() {
   const clockEl = document.getElementById("adminClockText");
+  let lastKnownDate = todayIso();
   const update = () => {
     if (!clockEl) return;
     const now = new Date();
     clockEl.textContent = "LIVE SYSTEM • " + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + " • " + now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
+
+    // Auto-advance date register to new day if portal is open across midnight
+    const curToday = todayIso();
+    if (curToday !== lastKnownDate) {
+      if (currentDateFilter === lastKnownDate) {
+        currentDateFilter = curToday;
+        const input = document.getElementById("sessionDateFilter");
+        if (input) input.value = curToday;
+        updateSessionDateLabel();
+        renderSessionsTable();
+      }
+      lastKnownDate = curToday;
+    }
   };
   update();
   setInterval(update, 1000);
@@ -447,8 +465,21 @@ function renderSessionsTable() {
     );
   }
 
+  // Apply date filter (skip if empty = show all)
+  if (currentDateFilter) {
+    const today = todayIso();
+    filtered = filtered.filter(s => {
+      const sessionDate = getSessionDate(s);
+      if (currentDateFilter === today && s.status === "active") return true;
+      return sessionDate === currentDateFilter;
+    });
+  }
+
+  updateSessionDateLabel();
+
   if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:36px; color:var(--text-muted);">No matching customer session records found.</td></tr>`;
+    const dateMsg = currentDateFilter ? ` for ${formatDisplayDate(currentDateFilter)}` : "";
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:36px; color:var(--text-muted);">No customer session records found${dateMsg}.</td></tr>`;
     return;
   }
 
@@ -552,6 +583,107 @@ window.handleSessionSearch = function() {
   currentSearch = input ? input.value.trim() : "";
   renderSessionsTable();
 };
+
+// DATE-WISE SESSION LOG HELPERS
+function todayIso() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getSessionDate(s) {
+  if (!s || !s.inTime) return "";
+  const d = new Date(s.inTime);
+  if (isNaN(d.getTime())) return (s.inTime || "").slice(0, 10);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(isoDate) {
+  if (!isoDate) return "";
+  const d = new Date(isoDate + "T00:00:00");
+  return isNaN(d.getTime()) ? isoDate : d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", year: "numeric" }).toUpperCase();
+}
+
+function updateSessionDateLabel() {
+  const label = document.getElementById("sessionDateLabel");
+  if (!label) return;
+  const today = todayIso();
+  const dateSessions = currentDateFilter
+    ? allSessions.filter(s => {
+        const sDate = getSessionDate(s);
+        if (currentDateFilter === today && s.status === "active") return true;
+        return sDate === currentDateFilter;
+      })
+    : allSessions;
+  const count = dateSessions.length;
+  const rev = dateSessions.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
+
+  if (currentDateFilter) {
+    const isToday = currentDateFilter === today;
+    const tag = isToday ? '<span style="background:rgba(0,255,157,0.18); color:var(--neon-green); font-size:10px; padding:2px 7px; border-radius:4px; font-weight:700; margin-left:6px; letter-spacing:0.5px;">TODAY</span>' : '';
+    label.innerHTML = `<span style="font-weight:700; color:#fff;">${formatDisplayDate(currentDateFilter)}</span>${tag} <span style="color:var(--neon-green); font-weight:600; margin-left:8px;">(${count} Sessions • Rs. ${rev.toLocaleString()})</span>`;
+  } else {
+    label.innerHTML = `<span style="font-weight:700; color:#fff;">ALL DATES</span> <span style="color:var(--neon-green); font-weight:600; margin-left:8px;">(${count} Sessions • Rs. ${rev.toLocaleString()})</span>`;
+  }
+}
+
+function initSessionDateFilter() {
+  const input = document.getElementById("sessionDateFilter");
+  const today = todayIso();
+  currentDateFilter = today;
+  if (input) input.value = today;
+  updateSessionDateLabel();
+}
+
+window.applySessionDateFilter = function() {
+  const input = document.getElementById("sessionDateFilter");
+  currentDateFilter = input ? input.value : "";
+  const showAllBtn = document.getElementById("btnShowAllDates");
+  if (showAllBtn) showAllBtn.classList.remove("active");
+  updateSessionDateLabel();
+  renderSessionsTable();
+};
+
+window.goToTodaySessionDate = function() {
+  const input = document.getElementById("sessionDateFilter");
+  const today = todayIso();
+  currentDateFilter = today;
+  if (input) input.value = today;
+  const showAllBtn = document.getElementById("btnShowAllDates");
+  if (showAllBtn) showAllBtn.classList.remove("active");
+  updateSessionDateLabel();
+  renderSessionsTable();
+};
+
+window.shiftSessionDate = function(direction) {
+  const input = document.getElementById("sessionDateFilter");
+  const base = currentDateFilter || todayIso();
+  const d = new Date(base + "T00:00:00");
+  d.setDate(d.getDate() + direction);
+  const newDate = d.toISOString().slice(0, 10);
+  currentDateFilter = newDate;
+  if (input) input.value = newDate;
+  const showAllBtn = document.getElementById("btnShowAllDates");
+  if (showAllBtn) showAllBtn.classList.remove("active");
+  updateSessionDateLabel();
+  renderSessionsTable();
+};
+
+window.showAllDates = function(btn) {
+  currentDateFilter = "";
+  const input = document.getElementById("sessionDateFilter");
+  if (input) input.value = "";
+  document.querySelectorAll(".table-filter-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  updateSessionDateLabel();
+  renderSessionsTable();
+};
+
 
 // 6. START NEW SESSION MODAL
 window.openStartSessionModal = function(defaultStation = "PS5 Station 1") {
@@ -1152,15 +1284,26 @@ window.handleEditBillSubmit = async function(e) {
   }
 };
 
-// 12. EXPORT HELPERS (PDF, CSV, JSON)
+function getFilteredSessionsForExport() {
+  if (!currentDateFilter) return allSessions.slice();
+  const today = todayIso();
+  return allSessions.filter(s => {
+    const sDate = getSessionDate(s);
+    if (currentDateFilter === today && s.status === "active") return true;
+    return sDate === currentDateFilter;
+  });
+}
+
 window.exportSessionsCsv = function() {
-  if (allSessions.length === 0) {
+  const exportData = getFilteredSessionsForExport();
+
+  if (exportData.length === 0) {
     showToast("No sessions available to export.");
     return;
   }
 
   const headers = ["ID", "Station", "Customer Name", "Gamer Tag", "Phone", "Game(s)", "In Time", "Out Time", "Duration (Min)", "Amount (Rs)", "Status", "Notes"];
-  const rows = allSessions.map(s => [
+  const rows = exportData.map(s => [
     `"${s.id}"`,
     `"${s.station}"`,
     `"${(s.customerName || '').replace(/"/g, '""')}"`,
@@ -1176,18 +1319,26 @@ window.exportSessionsCsv = function() {
   ]);
 
   const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
-  downloadBlob(csvContent, `infinity_gamers_sessions_${Date.now()}.csv`, "text/csv;charset=utf-8;");
-  showToast("Sessions history CSV downloaded.");
+  const dateSuffix = currentDateFilter ? `_${currentDateFilter}` : `_${Date.now()}`;
+  downloadBlob(csvContent, `infinity_gamers_sessions${dateSuffix}.csv`, "text/csv;charset=utf-8;");
+  const label = currentDateFilter ? ` for ${formatDisplayDate(currentDateFilter)}` : " (all dates)";
+  showToast(`Sessions CSV exported${label}.`);
 };
 
 window.exportSessionsJson = function() {
-  const jsonContent = JSON.stringify(allSessions, null, 2);
-  downloadBlob(jsonContent, `infinity_gamers_sessions_${Date.now()}.json`, "application/json;charset=utf-8;");
-  showToast("Sessions history JSON downloaded.");
+  const exportData = getFilteredSessionsForExport();
+
+  const jsonContent = JSON.stringify(exportData, null, 2);
+  const dateSuffix = currentDateFilter ? `_${currentDateFilter}` : `_${Date.now()}`;
+  downloadBlob(jsonContent, `infinity_gamers_sessions${dateSuffix}.json`, "application/json;charset=utf-8;");
+  const label = currentDateFilter ? ` for ${formatDisplayDate(currentDateFilter)}` : " (all dates)";
+  showToast(`Sessions JSON exported${label}.`);
 };
 
 window.exportSessionsPdf = function() {
-  if (allSessions.length === 0) {
+  const exportData = getFilteredSessionsForExport();
+
+  if (exportData.length === 0) {
     showToast("No sessions available to export.");
     return;
   }
@@ -1198,7 +1349,7 @@ window.exportSessionsPdf = function() {
     return;
   }
 
-  const rowsHtml = allSessions.map((s, idx) => `
+  const rowsHtml = exportData.map((s, idx) => `
     <tr>
       <td>${idx + 1}</td>
       <td><strong>${escapeHtml(s.station)}</strong></td>
@@ -1213,13 +1364,14 @@ window.exportSessionsPdf = function() {
     </tr>
   `).join("");
 
-  const totalRevenue = allSessions.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
+  const totalRevenue = exportData.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
+  const dateHeading = currentDateFilter ? ` — ${formatDisplayDate(currentDateFilter)}` : "";
 
   printWin.document.write(`
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Infinity Gamers - Sessions History Audit Report</title>
+      <title>Infinity Gamers - Sessions Report${currentDateFilter ? " " + currentDateFilter : ""}</title>
       <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #111; }
         .header { display: flex; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 20px; }
@@ -1236,12 +1388,12 @@ window.exportSessionsPdf = function() {
     <body>
       <div class="header">
         <div>
-          <h1>INFINITY GAMERS // CUSTOMER SESSIONS AUDIT REPORT</h1>
+          <h1>INFINITY GAMERS // CUSTOMER SESSIONS${dateHeading}</h1>
           <p>PS5 Lounge Management • Thoppampatti Pirivu, Coimbatore - 641017</p>
         </div>
         <div style="text-align:right;">
           <p>Generated: ${new Date().toLocaleString()}</p>
-          <p>Total Records: ${allSessions.length}</p>
+          <p>Total Records: ${exportData.length}</p>
         </div>
       </div>
 
@@ -1266,12 +1418,12 @@ window.exportSessionsPdf = function() {
       </table>
 
       <div class="total-box">
-        Total Sessions: ${allSessions.length} | Cumulative Value: Rs. ${totalRevenue.toLocaleString()}
+        Total Sessions: ${exportData.length} | Cumulative Value: Rs. ${totalRevenue.toLocaleString()}
       </div>
 
       <script>
         window.onload = function() { window.print(); };
-      </script>
+      <\/script>
     </body>
     </html>
   `);

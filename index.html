@@ -191,6 +191,18 @@
 
       <!-- TAB 1: SESSIONS LOG -->
       <div id="tabSessions" class="admin-tab-content">
+
+        <!-- DATE NAVIGATION BAR -->
+        <div style="background:rgba(0,212,255,0.05); border:1px solid rgba(0,212,255,0.2); border-radius:var(--radius); padding:14px 18px; margin-bottom:16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div style="font-family:var(--font-mono); font-size:11px; color:var(--neon-blue); letter-spacing:1px; text-transform:uppercase; flex-shrink:0;">DATE REGISTER</div>
+          <button type="button" class="btn-secondary" onclick="shiftSessionDate(-1)" style="padding:4px 12px; min-height:30px; font-size:12px;" title="Previous Day">&larr; PREV</button>
+          <input type="date" id="sessionDateFilter" class="form-control" style="max-width:160px; min-height:30px; font-size:12px; font-family:var(--font-mono); cursor:pointer;" onchange="applySessionDateFilter()">
+          <button type="button" class="btn-secondary" onclick="shiftSessionDate(1)" style="padding:4px 12px; min-height:30px; font-size:12px;" title="Next Day">NEXT &rarr;</button>
+          <button type="button" class="btn-primary" onclick="goToTodaySessionDate()" style="padding:4px 14px; min-height:30px; font-size:11px;">TODAY</button>
+          <span id="sessionDateLabel" style="font-family:var(--font-mono); font-size:12px; color:#e2e8f0; margin-left:4px;"></span>
+          <button type="button" class="table-filter-btn" id="btnShowAllDates" onclick="showAllDates(this)" style="margin-left:4px;">SHOW ALL DATES</button>
+        </div>
+
         <div class="table-controls-bar">
           <div class="search-input-box">
             <svg class="search-icon-pos" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -418,6 +430,7 @@
               <option value="Cricket 24">Cricket 24</option>
               <option value="Uncharted">Uncharted</option>
               <option value="Mortal Kombat 1">Mortal Kombat 1</option>
+              <option value="Mortal Kombat 11">Mortal Kombat 11</option>
               <option value="God of War">God of War</option>
               <option value="GTA V">GTA V</option>
               <option value="Spider-Man 2">Spider-Man 2</option>
@@ -488,6 +501,7 @@
               <option value="Cricket 24">Cricket 24</option>
               <option value="Uncharted">Uncharted</option>
               <option value="Mortal Kombat 1">Mortal Kombat 1</option>
+              <option value="Mortal Kombat 11">Mortal Kombat 11</option>
               <option value="God of War">God of War</option>
               <option value="GTA V">GTA V</option>
               <option value="Spider-Man 2">Spider-Man 2</option>
@@ -558,6 +572,7 @@
               <option value="Cricket 24">Cricket 24</option>
               <option value="Uncharted">Uncharted</option>
               <option value="Mortal Kombat 1">Mortal Kombat 1</option>
+              <option value="Mortal Kombat 11">Mortal Kombat 11</option>
               <option value="God of War">God of War</option>
               <option value="GTA V">GTA V</option>
               <option value="Spider-Man 2">Spider-Man 2</option>

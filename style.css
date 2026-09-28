@@ -280,6 +280,7 @@ button, input, select, textarea { font: inherit; }
   transition: border-color 0.2s ease;
   font-family: var(--font-body);
   font-size: 14px;
+  color-scheme: dark;
 }
 .form-control:focus {
   border-color: var(--neon-blue);
