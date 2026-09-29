@@ -528,7 +528,10 @@ function renderSessionsTable() {
         <td><span style="font-family:var(--font-mono); font-size:11.5px;">${inTimeFormatted}</span></td>
         <td><span style="font-family:var(--font-mono); font-size:11.5px;">${outTimeFormatted}</span></td>
         <td><span style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:${isActive ? 'var(--neon-blue)' : '#cbd5e1'};">${duration}</span></td>
-        <td><span style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:#10b981;">${amount}</span></td>
+        <td>
+          <span style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:#10b981;">${amount}</span>
+          ${s.paymentMethod ? `<div style="font-family:var(--font-mono); font-size:10px; color:#94a3b8; letter-spacing:0.5px; text-transform:uppercase; margin-top:2px;">${escapeHtml(s.paymentMethod)}</div>` : ''}
+        </td>
         <td>
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             ${isActive ? `
@@ -1020,6 +1023,9 @@ window.openCheckoutModal = function(sessionId) {
     hintEl.textContent = `Suggested: Rs. ${billAmount} (Rate: Rs. ${baseRate} • Elapsed: ${elapsedMins} min)`;
   }
 
+  const payMethodInput = document.getElementById("checkoutPaymentMethod");
+  if (payMethodInput) payMethodInput.value = session.paymentMethod || "UPI";
+
   document.getElementById("checkoutNotes").value = session.notes || "";
 
   if (modal) modal.classList.add("open");
@@ -1068,6 +1074,7 @@ window.handleCheckoutSubmit = async function(e) {
   const additionalCharges = Number(document.getElementById("checkoutAdditionalCharges")?.value) || 0;
   const additionalNote = document.getElementById("checkoutAdditionalNote")?.value.trim() || "";
   const amount = Number(document.getElementById("checkoutFinalAmount")?.value) || (baseAmount + additionalCharges);
+  const paymentMethod = document.getElementById("checkoutPaymentMethod")?.value || "UPI";
   const notes = document.getElementById("checkoutNotes")?.value.trim() || "";
 
   try {
@@ -1083,6 +1090,7 @@ window.handleCheckoutSubmit = async function(e) {
         additionalCharges,
         additionalNote,
         amount,
+        paymentMethod,
         notes,
         outTime: new Date().toISOString()
       })
@@ -1138,6 +1146,7 @@ window.openReceiptModal = function(sessionId) {
     baseAmount: baseAmt,
     additionalCharges: addlCharges,
     additionalNote: session.additionalNote || "",
+    paymentMethod: session.paymentMethod || "UPI",
     totalAmount: session.amount || (baseAmt + addlCharges)
   };
 
@@ -1151,6 +1160,9 @@ window.openReceiptModal = function(sessionId) {
   document.getElementById("receiptDuration").textContent = activeReceiptData.duration;
   document.getElementById("receiptRateBasis").textContent = activeReceiptData.rateBasis;
   document.getElementById("receiptTotalAmount").textContent = `Rs. ${activeReceiptData.totalAmount}`;
+
+  const payMethodEl = document.getElementById("receiptPaymentMethod");
+  if (payMethodEl) payMethodEl.textContent = activeReceiptData.paymentMethod;
 
   // Additional charges line item
   const addRow = document.getElementById("receiptAdditionalRow");
@@ -1180,6 +1192,8 @@ window.openReceiptFromCheckout = function() {
   const addlNote = document.getElementById("checkoutAdditionalNote")?.value.trim() || "";
   const customAmount = Number(document.getElementById("checkoutFinalAmount")?.value) || (baseAmt + addlCharges);
 
+  const livePaymentMethod = document.getElementById("checkoutPaymentMethod")?.value || "UPI";
+
   openReceiptModal(sessionId);
 
   // Sync live checkout breakdown to active receipt
@@ -1187,8 +1201,12 @@ window.openReceiptFromCheckout = function() {
     activeReceiptData.baseAmount = baseAmt;
     activeReceiptData.additionalCharges = addlCharges;
     activeReceiptData.additionalNote = addlNote;
+    activeReceiptData.paymentMethod = livePaymentMethod;
     activeReceiptData.totalAmount = customAmount;
   }
+
+  const payMethodEl = document.getElementById("receiptPaymentMethod");
+  if (payMethodEl) payMethodEl.textContent = livePaymentMethod;
 
   // Update additional charges line row
   const addRow = document.getElementById("receiptAdditionalRow");
@@ -1234,6 +1252,7 @@ Station: ${activeReceiptData.station}
 Game(s): ${activeReceiptData.games}
 Duration: ${activeReceiptData.duration}
 Rate Basis: ${activeReceiptData.rateBasis}${addLine}
+Payment Method: ${activeReceiptData.paymentMethod || 'UPI'}
 *Total Payable: Rs. ${activeReceiptData.totalAmount}*
 ---------------------------------------
 Thank you for playing at Infinity Gamers PS5 Lounge!
@@ -1261,6 +1280,7 @@ Station: ${activeReceiptData.station}
 Game(s): ${activeReceiptData.games}
 Duration: ${activeReceiptData.duration}
 Rate Basis: ${activeReceiptData.rateBasis}${addLine}
+Payment Method: ${activeReceiptData.paymentMethod || 'UPI'}
 Total Payable: Rs. ${activeReceiptData.totalAmount}
 Status: PAID`;
 
@@ -1325,6 +1345,9 @@ window.openEditBillModal = function(sessionId) {
 
   const addlNote = document.getElementById("editBillAdditionalNote");
   if (addlNote) addlNote.value = session.additionalNote || "";
+
+  const payMethodInput = document.getElementById("editBillPaymentMethod");
+  if (payMethodInput) payMethodInput.value = session.paymentMethod || "UPI";
 
   document.getElementById("editBillAmount").value = session.amount || (baseAmt + addlCharges);
   document.getElementById("editBillNotes").value = session.notes || "";
@@ -1393,6 +1416,7 @@ window.handleEditBillSubmit = async function(e) {
   const baseAmount = Number(document.getElementById("editBillBaseAmount")?.value) || 0;
   const additionalCharges = Number(document.getElementById("editBillAdditionalCharges")?.value) || 0;
   const additionalNote = document.getElementById("editBillAdditionalNote")?.value.trim() || "";
+  const paymentMethod = document.getElementById("editBillPaymentMethod")?.value || "UPI";
   const amount = Number(document.getElementById("editBillAmount").value) || (baseAmount + additionalCharges);
   const notes = document.getElementById("editBillNotes").value.trim();
 
@@ -1419,6 +1443,7 @@ window.handleEditBillSubmit = async function(e) {
         additionalCharges,
         additionalNote,
         amount,
+        paymentMethod,
         notes
       })
     });

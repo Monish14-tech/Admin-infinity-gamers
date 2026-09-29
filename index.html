@@ -683,6 +683,23 @@
           </div>
 
           <div class="form-group">
+            <label for="checkoutPaymentMethod">PAYMENT METHOD</label>
+            <select id="checkoutPaymentMethod" class="form-control" style="background:#090d18; color:#fff; font-weight:600;">
+              <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Credit / Debit Card</option>
+              <option value="Split">Split (Cash + UPI)</option>
+              <option value="Complimentary">Complimentary / Free Pass</option>
+            </select>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
+              <button type="button" class="table-filter-btn" style="padding:2px 8px; font-size:10.5px;" onclick="document.getElementById('checkoutPaymentMethod').value = 'UPI'">UPI</button>
+              <button type="button" class="table-filter-btn" style="padding:2px 8px; font-size:10.5px;" onclick="document.getElementById('checkoutPaymentMethod').value = 'Cash'">Cash</button>
+              <button type="button" class="table-filter-btn" style="padding:2px 8px; font-size:10.5px;" onclick="document.getElementById('checkoutPaymentMethod').value = 'Card'">Card</button>
+              <button type="button" class="table-filter-btn" style="padding:2px 8px; font-size:10.5px;" onclick="document.getElementById('checkoutPaymentMethod').value = 'Split'">Split</button>
+            </div>
+          </div>
+
+          <div class="form-group">
             <label for="checkoutNotes">FINAL NOTES</label>
             <input type="text" id="checkoutNotes" class="form-control" placeholder="Enter final notes (e.g. Paid UPI, DualSense returned)">
           </div>
@@ -760,9 +777,14 @@
             </div>
           </div>
 
-          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(255,255,255,0.15); padding-top:14px; margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px dashed rgba(255,255,255,0.15); padding-top:14px; margin-bottom:8px;">
             <span style="font-family:var(--font-heading); font-size:15px; color:#fff;">TOTAL PAYABLE:</span>
             <strong id="receiptTotalAmount" style="font-family:var(--font-mono); font-size:24px; color:#10b981;">Rs. 0</strong>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; margin-bottom:14px; padding:6px 10px; background:rgba(255,255,255,0.03); border-radius:3px; border:1px solid rgba(255,255,255,0.06);">
+            <span style="color:#94a3b8; font-family:var(--font-mono);">PAYMENT METHOD:</span>
+            <strong id="receiptPaymentMethod" style="color:#6ee7b7; font-family:var(--font-mono); font-size:12px;">UPI</strong>
           </div>
 
           <div style="text-align:center; font-family:var(--font-mono); font-size:11px; color:#94a3b8; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px;">
@@ -890,6 +912,17 @@
               <span id="editBillTotalFormula" style="font-family:var(--font-mono); font-size:11px; font-weight:normal; color:#94a3b8;">Base + Addl</span>
             </label>
             <input type="number" id="editBillAmount" class="form-control" placeholder="Final amount (Rs.)" min="0" step="1" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="border-color:var(--neon-green); font-weight:700; color:var(--neon-green);">
+          </div>
+
+          <div class="form-group">
+            <label for="editBillPaymentMethod">PAYMENT METHOD</label>
+            <select id="editBillPaymentMethod" class="form-control" style="background:#090d18; color:#fff; font-weight:600;">
+              <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+              <option value="Cash">Cash</option>
+              <option value="Card">Credit / Debit Card</option>
+              <option value="Split">Split (Cash + UPI)</option>
+              <option value="Complimentary">Complimentary / Free Pass</option>
+            </select>
           </div>
 
           <div class="form-group">
