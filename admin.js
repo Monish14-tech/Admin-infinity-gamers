@@ -530,6 +530,7 @@ function renderSessionsTable() {
         <td><span style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:${isActive ? 'var(--neon-blue)' : '#cbd5e1'};">${duration}</span></td>
         <td>
           <span style="font-family:var(--font-mono); font-size:12px; font-weight:700; color:#10b981;">${amount}</span>
+          ${s.additionalCharges > 0 ? `<div style="font-family:var(--font-mono); font-size:10px; color:#f59e0b; margin-top:1px;">+Rs. ${s.additionalCharges} extra</div>` : ''}
           ${s.paymentMethod ? `<div style="font-family:var(--font-mono); font-size:10px; color:#94a3b8; letter-spacing:0.5px; text-transform:uppercase; margin-top:2px;">${escapeHtml(s.paymentMethod)}</div>` : ''}
         </td>
         <td>
@@ -1073,9 +1074,16 @@ window.handleCheckoutSubmit = async function(e) {
   const baseAmount = Number(document.getElementById("checkoutBaseAmount")?.value) || 0;
   const additionalCharges = Number(document.getElementById("checkoutAdditionalCharges")?.value) || 0;
   const additionalNote = document.getElementById("checkoutAdditionalNote")?.value.trim() || "";
-  const amount = Number(document.getElementById("checkoutFinalAmount")?.value) || (baseAmount + additionalCharges);
+  
+  // Guaranteed total: base + additional charges
+  let amount = Number(document.getElementById("checkoutFinalAmount")?.value);
+  if (!amount || (additionalCharges > 0 && amount <= baseAmount)) {
+    amount = baseAmount + additionalCharges;
+  }
+
   const paymentMethod = document.getElementById("checkoutPaymentMethod")?.value || "UPI";
   const notes = document.getElementById("checkoutNotes")?.value.trim() || "";
+  const outTime = new Date().toISOString();
 
   try {
     const res = await fetch(`${API_BASE_URL}/api/admin/sessions/${sessionId}?_t=${Date.now()}`, {
@@ -1092,21 +1100,45 @@ window.handleCheckoutSubmit = async function(e) {
         amount,
         paymentMethod,
         notes,
-        outTime: new Date().toISOString()
+        outTime
       })
     });
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to checkout session.");
 
+    // Retrieve previous in-memory record to preserve fields
+    const prevSession = allSessions.find(s => s.id === sessionId) || {};
+    const updatedSession = Object.assign({}, prevSession, data.session || {}, {
+      id: sessionId,
+      baseAmount,
+      additionalCharges,
+      additionalNote,
+      amount,
+      paymentMethod,
+      notes,
+      status: "completed",
+      outTime
+    });
+
+    // IMMEDIATELY update local cache so there is ZERO race condition with fetchSessions
+    const idx = allSessions.findIndex(s => s.id === sessionId);
+    if (idx !== -1) {
+      allSessions[idx] = updatedSession;
+    } else {
+      allSessions.unshift(updatedSession);
+    }
+
     showToast("Session completed. Station is now vacant!");
     closeCheckoutModal();
-    fetchSessions();
+    renderSessionsTable();
+    updateStationOverview();
 
-    // Automatically prompt printable receipt
-    setTimeout(() => {
-      openReceiptModal(sessionId);
-    }, 400);
+    // Directly open receipt modal with the guaranteed updated session object!
+    openReceiptModal(sessionId, updatedSession);
+
+    // Sync in background with backend
+    fetchSessions();
   } catch (err) {
     showToast("Error: " + err.message);
   }
@@ -1115,8 +1147,8 @@ window.handleCheckoutSubmit = async function(e) {
 // 11. SHARABLE & PRINTABLE RECEIPT (PDF / WHATSAPP)
 let activeReceiptData = null;
 
-window.openReceiptModal = function(sessionId) {
-  const session = allSessions.find(s => s.id === sessionId);
+window.openReceiptModal = function(sessionId, sessionObj = null) {
+  const session = sessionObj || allSessions.find(s => s.id === sessionId);
   if (!session) return;
 
   const dur = session.durationMinutes || calculateElapsedMinutes(session);
@@ -1128,7 +1160,24 @@ window.openReceiptModal = function(sessionId) {
   const rateVal = session.rateBasis || session.baseAmount || session.amount || 148;
   const cleanRate = String(rateVal).replace(/\s*\/\s*(?:hour|hr)/gi, '').replace(/^rs\.?\s*/i, '').trim();
   const addlCharges = Number(session.additionalCharges) || 0;
-  const baseAmt = session.baseAmount !== undefined ? Number(session.baseAmount) : (Number(session.amount || 148) - addlCharges);
+
+  let baseAmt = (session.baseAmount !== undefined && session.baseAmount !== null)
+    ? Number(session.baseAmount)
+    : 0;
+
+  if (!baseAmt) {
+    if (session.amount && Number(session.amount) > addlCharges) {
+      baseAmt = Number(session.amount) - addlCharges;
+    } else {
+      baseAmt = Number(cleanRate) || Number(session.amount) || 148;
+    }
+  }
+
+  // Calculate total: MUST ALWAYS include baseAmt + addlCharges!
+  let totalAmount = baseAmt + addlCharges;
+  if (session.amount && Number(session.amount) >= (baseAmt + addlCharges)) {
+    totalAmount = Number(session.amount);
+  }
 
   activeReceiptData = {
     sessionId: session.id,
@@ -1147,7 +1196,7 @@ window.openReceiptModal = function(sessionId) {
     additionalCharges: addlCharges,
     additionalNote: session.additionalNote || "",
     paymentMethod: session.paymentMethod || "UPI",
-    totalAmount: session.amount || (baseAmt + addlCharges)
+    totalAmount: totalAmount
   };
 
   document.getElementById("receiptNumber").textContent = `RECEIPT #${activeReceiptData.receiptId}`;
@@ -1190,39 +1239,22 @@ window.openReceiptFromCheckout = function() {
   const baseAmt = Number(document.getElementById("checkoutBaseAmount")?.value) || 0;
   const addlCharges = Number(document.getElementById("checkoutAdditionalCharges")?.value) || 0;
   const addlNote = document.getElementById("checkoutAdditionalNote")?.value.trim() || "";
-  const customAmount = Number(document.getElementById("checkoutFinalAmount")?.value) || (baseAmt + addlCharges);
-
+  let finalAmt = Number(document.getElementById("checkoutFinalAmount")?.value);
+  if (!finalAmt || (addlCharges > 0 && finalAmt <= baseAmt)) {
+    finalAmt = baseAmt + addlCharges;
+  }
   const livePaymentMethod = document.getElementById("checkoutPaymentMethod")?.value || "UPI";
 
-  openReceiptModal(sessionId);
+  const previewSession = Object.assign({}, session, {
+    baseAmount: baseAmt,
+    additionalCharges: addlCharges,
+    additionalNote: addlNote,
+    amount: finalAmt,
+    paymentMethod: livePaymentMethod,
+    outTime: session.outTime || new Date().toISOString()
+  });
 
-  // Sync live checkout breakdown to active receipt
-  if (activeReceiptData) {
-    activeReceiptData.baseAmount = baseAmt;
-    activeReceiptData.additionalCharges = addlCharges;
-    activeReceiptData.additionalNote = addlNote;
-    activeReceiptData.paymentMethod = livePaymentMethod;
-    activeReceiptData.totalAmount = customAmount;
-  }
-
-  const payMethodEl = document.getElementById("receiptPaymentMethod");
-  if (payMethodEl) payMethodEl.textContent = livePaymentMethod;
-
-  // Update additional charges line row
-  const addRow = document.getElementById("receiptAdditionalRow");
-  if (addRow) {
-    if (addlCharges > 0) {
-      addRow.style.display = "flex";
-      const desc = addlNote ? ` (${addlNote})` : "";
-      document.getElementById("receiptAdditionalLabel").textContent = `Additional Charges${desc}:`;
-      document.getElementById("receiptAdditionalAmount").textContent = `+ Rs. ${addlCharges}`;
-    } else {
-      addRow.style.display = "none";
-    }
-  }
-
-  // Override total amount
-  document.getElementById("receiptTotalAmount").textContent = `Rs. ${customAmount}`;
+  openReceiptModal(sessionId, previewSession);
 };
 
 window.closeReceiptModal = function() {
@@ -1335,7 +1367,17 @@ window.openEditBillModal = function(sessionId) {
   document.getElementById("editBillRateBasis").value = session.rateBasis || session.baseAmount || session.amount || 148;
   
   const addlCharges = Number(session.additionalCharges) || 0;
-  const baseAmt = session.baseAmount !== undefined ? Number(session.baseAmount) : (Number(session.amount || 148) - addlCharges);
+  let baseAmt = (session.baseAmount !== undefined && session.baseAmount !== null)
+    ? Number(session.baseAmount) 
+    : 0;
+  
+  if (!baseAmt) {
+    if (session.amount && Number(session.amount) > addlCharges) {
+      baseAmt = Number(session.amount) - addlCharges;
+    } else {
+      baseAmt = Number(session.rateBasis) || Number(session.amount) || 148;
+    }
+  }
   
   const baseInput = document.getElementById("editBillBaseAmount");
   if (baseInput) baseInput.value = baseAmt;
@@ -1349,7 +1391,11 @@ window.openEditBillModal = function(sessionId) {
   const payMethodInput = document.getElementById("editBillPaymentMethod");
   if (payMethodInput) payMethodInput.value = session.paymentMethod || "UPI";
 
-  document.getElementById("editBillAmount").value = session.amount || (baseAmt + addlCharges);
+  let billTotal = baseAmt + addlCharges;
+  if (session.amount && Number(session.amount) >= (baseAmt + addlCharges)) {
+    billTotal = Number(session.amount);
+  }
+  document.getElementById("editBillAmount").value = billTotal;
   document.getElementById("editBillNotes").value = session.notes || "";
 
   updateEditBillTotal();
@@ -1417,7 +1463,10 @@ window.handleEditBillSubmit = async function(e) {
   const additionalCharges = Number(document.getElementById("editBillAdditionalCharges")?.value) || 0;
   const additionalNote = document.getElementById("editBillAdditionalNote")?.value.trim() || "";
   const paymentMethod = document.getElementById("editBillPaymentMethod")?.value || "UPI";
-  const amount = Number(document.getElementById("editBillAmount").value) || (baseAmount + additionalCharges);
+  let amount = Number(document.getElementById("editBillAmount").value);
+  if (!amount || (additionalCharges > 0 && amount <= baseAmount)) {
+    amount = baseAmount + additionalCharges;
+  }
   const notes = document.getElementById("editBillNotes").value.trim();
 
   const gamesArray = gamesRaw ? gamesRaw.split(",").map(g => g.trim()).filter(Boolean) : ["EA Sports FC 26"];
@@ -1452,9 +1501,30 @@ window.handleEditBillSubmit = async function(e) {
     if (!res.ok) throw new Error(data.error || "Failed to update bill details.");
 
     // Update in local cache
+    const prevSession = allSessions.find(s => s.id === id) || {};
+    const updatedSession = Object.assign({}, prevSession, data.session || {}, {
+      id,
+      customerName,
+      gamerTag,
+      phone,
+      station,
+      game: primaryGame,
+      gamesPlayed: gamesArray,
+      durationMinutes,
+      rateBasis,
+      baseAmount,
+      additionalCharges,
+      additionalNote,
+      amount,
+      paymentMethod,
+      notes
+    });
+
     const idx = allSessions.findIndex(s => s.id === id);
-    if (idx !== -1 && data.session) {
-      allSessions[idx] = data.session;
+    if (idx !== -1) {
+      allSessions[idx] = updatedSession;
+    } else {
+      allSessions.unshift(updatedSession);
     }
 
     showToast("Bill updated successfully.");
@@ -1467,7 +1537,7 @@ window.handleEditBillSubmit = async function(e) {
     // If receipt modal was viewing this bill, refresh it in place!
     const receiptModal = document.getElementById("modalReceiptPrint");
     if (receiptModal && receiptModal.classList.contains("open")) {
-      openReceiptModal(id);
+      openReceiptModal(id, updatedSession);
     }
   } catch (err) {
     showToast("Error: " + err.message);
