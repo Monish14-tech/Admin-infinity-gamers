@@ -354,7 +354,7 @@ function updateStationCard(stationName, num) {
 
     const elapsedMins = calculateElapsedMinutes(active);
     if (elapsedEl) {
-      const formatted = formatDurationDetailed(elapsedMins);
+      const formatted = formatElapsedInHours(elapsedMins);
       elapsedEl.textContent = isPaused ? `${formatted} (PAUSED)` : formatted;
     }
 
@@ -395,7 +395,7 @@ function updateStationCard(stationName, num) {
       playerInfo.innerHTML = `<strong>No Active Player</strong><span>Station ready for walk-ins</span>`;
     }
     if (inTimeEl) inTimeEl.textContent = "--:--";
-    if (elapsedEl) elapsedEl.textContent = "00:00 (0m)";
+    if (elapsedEl) elapsedEl.textContent = "0 HR 0 MIN";
     if (gameEl) gameEl.textContent = "--";
 
     if (actionDiv) {
@@ -427,7 +427,7 @@ function updateLiveStationTimers() {
       const elapsedEl = document.getElementById(`elapsedStation${num}`);
       if (elapsedEl) {
         const mins = calculateElapsedMinutes(active);
-        const formatted = formatDurationDetailed(mins);
+        const formatted = formatElapsedInHours(mins);
         elapsedEl.textContent = active.isPaused ? `${formatted} (PAUSED)` : formatted;
       }
     }
@@ -496,8 +496,8 @@ function renderSessionsTable() {
     const outTimeFormatted = s.outTime ? formatDateTime(s.outTime) : "--";
     const elapsedMins = isActive ? calculateElapsedMinutes(s) : (s.durationMinutes || 0);
     const duration = isActive 
-      ? `${formatDurationDetailed(elapsedMins)} ${isPaused ? '(PAUSED)' : '(LIVE)'}`
-      : formatDurationDetailed(elapsedMins);
+      ? `${formatElapsedInHours(elapsedMins)} ${isPaused ? '(PAUSED)' : '(LIVE)'}`
+      : formatElapsedInHours(elapsedMins);
     const amount = `Rs. ${s.amount || 0}`;
 
     const gamesDisplay = Array.isArray(s.gamesPlayed) && s.gamesPlayed.length > 0 
@@ -1004,7 +1004,7 @@ window.openCheckoutModal = function(sessionId) {
   document.getElementById("checkoutOutTime").textContent = formatTimeShort(new Date().toISOString());
 
   const elapsedMins = Math.max(1, calculateElapsedMinutes(session));
-  document.getElementById("checkoutDuration").textContent = formatDurationDetailed(elapsedMins);
+  document.getElementById("checkoutDuration").textContent = formatElapsedInHours(elapsedMins);
 
   const baseRate = Number(session.rateBasis) || Number(session.amount) || 148;
   const billAmount = Math.max(50, Math.ceil((elapsedMins / 60) * baseRate));
@@ -1024,7 +1024,7 @@ window.openCheckoutModal = function(sessionId) {
 
   const hintEl = document.getElementById("checkoutAmountHint");
   if (hintEl) {
-    hintEl.textContent = `Suggested: Rs. ${billAmount} (Rate: Rs. ${baseRate} • Elapsed: ${formatDurationDetailed(elapsedMins)})`;
+    hintEl.textContent = `Suggested: Rs. ${billAmount} (Rate: Rs. ${baseRate} • Elapsed: ${formatElapsedInHours(elapsedMins)})`;
   }
 
   const payMethodInput = document.getElementById("checkoutPaymentMethod");
@@ -1192,7 +1192,7 @@ window.openReceiptModal = function(sessionId, sessionObj = null) {
     games: games,
     inTime: formatDateTime(session.inTime),
     outTime: session.outTime ? formatDateTime(session.outTime) : "IN PROGRESS",
-    duration: `${formatDurationDetailed(dur)} (${hours} HRS)`,
+    duration: formatElapsedInHours(dur),
     durationMinutes: dur,
     rateBasis: `Rs. ${cleanRate}`,
     baseAmount: baseAmt,
@@ -1622,7 +1622,7 @@ window.exportSessionsPdf = function() {
       <td>${escapeHtml(Array.isArray(s.gamesPlayed) ? s.gamesPlayed.join(', ') : (s.game || 'FC 26'))}</td>
       <td>${formatDateTime(s.inTime)}</td>
       <td>${s.outTime ? formatDateTime(s.outTime) : 'ACTIVE'}</td>
-      <td>${formatDurationDetailed(s.durationMinutes || 0)}</td>
+      <td>${formatElapsedInHours(s.durationMinutes || 0)}</td>
       <td>Rs. ${s.amount || 0}</td>
     </tr>
   `).join("");
@@ -2438,23 +2438,18 @@ window.saveApiSettings = function() {
 };
 
 // 12. UTILITIES
+function formatElapsedInHours(totalMinutes) {
+  const m = Math.max(0, Math.floor(Number(totalMinutes) || 0));
+  const hrs = Math.floor(m / 60);
+  const mins = m % 60;
+  return `${hrs} HR ${mins} MIN`;
+}
+
 function formatHoursMinutes(totalMinutes) {
   const m = Math.max(0, Math.floor(Number(totalMinutes) || 0));
   const hrs = Math.floor(m / 60);
   const mins = m % 60;
   return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
-}
-
-function formatDurationDetailed(totalMinutes) {
-  const m = Math.max(0, Math.floor(Number(totalMinutes) || 0));
-  const hrs = Math.floor(m / 60);
-  const mins = m % 60;
-  const padHrs = String(hrs).padStart(2, "0");
-  const padMins = String(mins).padStart(2, "0");
-  if (hrs > 0) {
-    return `${padHrs}:${padMins} (${hrs}h ${mins}m)`;
-  }
-  return `${padHrs}:${padMins} (${mins}m)`;
 }
 
 function calculateElapsedMinutes(sessionOrIso) {
