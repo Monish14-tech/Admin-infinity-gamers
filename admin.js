@@ -434,6 +434,58 @@ function updateLiveStationTimers() {
   });
 }
 
+// SEARCH MATCHER: Matches across all dates for any customer, tag, phone, game, notes, amount or date format
+function sessionMatchesSearch(s, q) {
+  if (!q) return true;
+  const query = q.toLowerCase().trim();
+  if (!query) return true;
+
+  // 1. Customer & contact fields
+  if (s.customerName && s.customerName.toLowerCase().includes(query)) return true;
+  if (s.gamerTag && s.gamerTag.toLowerCase().includes(query)) return true;
+  if (s.phone && String(s.phone).includes(query)) return true;
+  if (s.station && s.station.toLowerCase().includes(query)) return true;
+  if (s.status && s.status.toLowerCase().includes(query)) return true;
+
+  // 2. Games played
+  if (s.game && s.game.toLowerCase().includes(query)) return true;
+  if (Array.isArray(s.gamesPlayed) && s.gamesPlayed.some(g => String(g).toLowerCase().includes(query))) return true;
+
+  // 3. Notes, snack/addon notes, payment methods
+  if (s.notes && s.notes.toLowerCase().includes(query)) return true;
+  if (s.additionalNote && s.additionalNote.toLowerCase().includes(query)) return true;
+  if (s.paymentMethod && s.paymentMethod.toLowerCase().includes(query)) return true;
+
+  // 4. Amounts & charges
+  if (s.amount !== undefined && String(s.amount).includes(query)) return true;
+  if (s.baseAmount !== undefined && String(s.baseAmount).includes(query)) return true;
+  if (s.additionalCharges !== undefined && String(s.additionalCharges).includes(query)) return true;
+
+  // 5. Date & Time (formatted + ISO + locale variations across all days)
+  if (s.inTime) {
+    if (s.inTime.toLowerCase().includes(query)) return true;
+    if (formatDateTime(s.inTime).toLowerCase().includes(query)) return true;
+    const inDate = new Date(s.inTime);
+    if (!isNaN(inDate.getTime())) {
+      if (inDate.toDateString().toLowerCase().includes(query)) return true;
+      if (inDate.toLocaleDateString().toLowerCase().includes(query)) return true;
+      const displayDate = formatDisplayDate(getSessionDate(s)).toLowerCase();
+      if (displayDate.includes(query)) return true;
+    }
+  }
+  if (s.outTime) {
+    if (s.outTime.toLowerCase().includes(query)) return true;
+    if (formatDateTime(s.outTime).toLowerCase().includes(query)) return true;
+    const outDate = new Date(s.outTime);
+    if (!isNaN(outDate.getTime())) {
+      if (outDate.toDateString().toLowerCase().includes(query)) return true;
+      if (outDate.toLocaleDateString().toLowerCase().includes(query)) return true;
+    }
+  }
+
+  return false;
+}
+
 // 5. RENDER SESSIONS TABLE
 function renderSessionsTable() {
   const tbody = document.getElementById("sessionsTableBody");
@@ -447,41 +499,37 @@ function renderSessionsTable() {
 
   let filtered = allSessions.slice();
 
-  if (currentFilter === "active") filtered = filtered.filter(s => s.status === "active");
-  if (currentFilter === "completed") filtered = filtered.filter(s => s.status === "completed");
-  if (currentFilter === "repeat") {
-    filtered = filtered.filter(s => {
-      const p = (s.phone || '').trim();
-      return p && phoneCounts[p] > 1;
-    });
-  }
-
+  // WHEN SEARCHING: Search across ALL dates and statuses so any historical customer session is retrieved!
   if (currentSearch) {
-    const q = currentSearch.toLowerCase();
-    filtered = filtered.filter(s => 
-      (s.customerName && s.customerName.toLowerCase().includes(q)) ||
-      (s.gamerTag && s.gamerTag.toLowerCase().includes(q)) ||
-      (s.phone && s.phone.includes(q)) ||
-      (s.game && s.game.toLowerCase().includes(q)) ||
-      (s.station && s.station.toLowerCase().includes(q))
-    );
-  }
+    filtered = filtered.filter(s => sessionMatchesSearch(s, currentSearch));
+  } else {
+    // Apply status pills only when not searching across all dates
+    if (currentFilter === "active") filtered = filtered.filter(s => s.status === "active");
+    if (currentFilter === "completed") filtered = filtered.filter(s => s.status === "completed");
+    if (currentFilter === "repeat") {
+      filtered = filtered.filter(s => {
+        const p = (s.phone || '').trim();
+        return p && phoneCounts[p] > 1;
+      });
+    }
 
-  // Apply date filter (skip if empty = show all)
-  if (currentDateFilter) {
-    const today = todayIso();
-    filtered = filtered.filter(s => {
-      const sessionDate = getSessionDate(s);
-      if (currentDateFilter === today && s.status === "active") return true;
-      return sessionDate === currentDateFilter;
-    });
+    // Apply date filter ONLY if NOT searching (defaults to today's date register)
+    if (currentDateFilter) {
+      const today = todayIso();
+      filtered = filtered.filter(s => {
+        const sessionDate = getSessionDate(s);
+        if (currentDateFilter === today && s.status === "active") return true;
+        return sessionDate === currentDateFilter;
+      });
+    }
   }
 
   updateSessionDateLabel();
 
   if (filtered.length === 0) {
-    const dateMsg = currentDateFilter ? ` for ${formatDisplayDate(currentDateFilter)}` : "";
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:36px; color:var(--text-muted);">No customer session records found${dateMsg}.</td></tr>`;
+    const searchMsg = currentSearch ? ` matching "${escapeHtml(currentSearch)}" across all dates` : "";
+    const dateMsg = (!currentSearch && currentDateFilter) ? ` for ${formatDisplayDate(currentDateFilter)}` : "";
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:36px; color:var(--text-muted);">No customer session records found${searchMsg}${dateMsg}.</td></tr>`;
     return;
   }
 
@@ -588,6 +636,21 @@ window.filterSessions = function(filterType, btn) {
 window.handleSessionSearch = function() {
   const input = document.getElementById("sessionSearchInput");
   currentSearch = input ? input.value.trim() : "";
+  if (currentSearch && currentFilter !== "all") {
+    currentFilter = "all";
+    document.querySelectorAll(".table-filter-btn").forEach(b => {
+      if (b.getAttribute("data-filter")) {
+        b.classList.toggle("active", b.getAttribute("data-filter") === "all");
+      }
+    });
+  }
+  renderSessionsTable();
+};
+
+window.clearSessionSearch = function() {
+  const input = document.getElementById("sessionSearchInput");
+  if (input) input.value = "";
+  currentSearch = "";
   renderSessionsTable();
 };
 
@@ -620,6 +683,15 @@ function updateSessionDateLabel() {
   const label = document.getElementById("sessionDateLabel");
   if (!label) return;
   const today = todayIso();
+
+  if (currentSearch) {
+    const matches = allSessions.filter(s => sessionMatchesSearch(s, currentSearch));
+    const count = matches.length;
+    const rev = matches.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
+    label.innerHTML = `<span style="font-weight:700; color:var(--neon-pink);">SEARCHING ALL DATES: "${escapeHtml(currentSearch)}"</span> <span style="color:var(--neon-green); font-weight:600; margin-left:8px;">(${count} Match${count === 1 ? '' : 'es'} • Rs. ${rev.toLocaleString()})</span> <button type="button" class="btn-secondary" onclick="clearSessionSearch()" style="padding:2px 8px; font-size:10px; min-height:22px; margin-left:8px; border-color:var(--neon-pink); color:var(--neon-pink); cursor:pointer;">✕ CLEAR</button>`;
+    return;
+  }
+
   const dateSessions = currentDateFilter
     ? allSessions.filter(s => {
         const sDate = getSessionDate(s);
@@ -1548,6 +1620,9 @@ window.handleEditBillSubmit = async function(e) {
 };
 
 function getFilteredSessionsForExport() {
+  if (currentSearch) {
+    return allSessions.filter(s => sessionMatchesSearch(s, currentSearch));
+  }
   if (!currentDateFilter) return allSessions.slice();
   const today = todayIso();
   return allSessions.filter(s => {
